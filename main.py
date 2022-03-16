@@ -11,12 +11,15 @@ import requests
 import sqlite3
 from discord.ext import commands
 from dotenv import load_dotenv
+from bs4 import BeautifulSoup
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD = os.getenv('DISCORD_GUILD')
 
-bot = commands.Bot(command_prefix='!')
+intents = discord.Intents.default()
+intents.members = True
+bot = commands.Bot(command_prefix='!', intents=intents)
 
 
 @bot.event
@@ -48,7 +51,7 @@ async def nickname_set(ctx, name):
 @bot.command(name='me_so_hungy')
 async def feed(ctx):
     data = get_data(ctx)
-    set_data(ctx, 'cookie_count', int(data[0][2])+1)
+    set_data(ctx, 'cookie_count', int(data[0][2]) + 1)
     await ctx.send(f'Here, {ctx.author.name} have a cookie 🍪')
 
 
@@ -123,6 +126,50 @@ async def who_am_i(ctx):
         await ctx.send('I do not know who you are')
     else:
         await ctx.send('You are ' + str(data[0][1]))
+
+
+@bot.command(name="get_results", help="Retrieves participant GC ranking results")
+async def get_results(ctx):
+    channel = bot.get_channel(953332541874663434)
+    message = await channel.history().find(lambda m: 916016716889350265 in m.raw_role_mentions)
+    if message is None:
+        return
+    participants = set()
+    coaches = set()
+    for reaction in message.reactions:
+        async for user in reaction.users():
+            if reaction.emoji == "🇵":
+                participants.add(ctx.guild.get_member(user.id))
+            if reaction.emoji == "🇨":
+                coaches.add(ctx.guild.get_member(user.id))
+    x = 1
+    soup = BeautifulSoup(requests.get(f"https://na.finalfantasyxiv.com/lodestone/ranking/gc/weekly/?page=1&filter={x}"
+                                      "&worldname=Siren").content, 'html.parser')
+    x = x + 1
+    participant_scores = set()
+    for participant in participants:
+        name_found = soup.find(text=participant.display_name)
+        while name_found is None:
+            if x > 5:
+                return
+            soup = BeautifulSoup(
+                requests.get(f"https://na.finalfantasyxiv.com/lodestone/ranking/gc/weekly/?page={x}&filter=1"
+                             "&worldname=Siren").content, 'html.parser')
+            x = x + 1
+            name_found = soup.find(text=participant.display_name)
+        names_info = name_found.find_parent('tr')
+        score = names_info.find("td", {"class": "ranking-character__value"}).contents
+        if score:
+            score = str(score[0]).strip()
+        print(names_info)
+        ranking = names_info.select(".ranking-character__number")[0].contents
+        if ranking:
+            ranking = str(ranking[0]).strip()
+        participant_scores.add(f"{participant.display_name} was ranked {ranking} with {score} points")
+    if participant_scores:
+        await ctx.send(f"participants: {', '.join(user for user in participant_scores)}")
+    if coaches:
+        await ctx.send(f"\ncoaches: {', '.join(user.display_name for user in coaches)}")
 
 
 def get_data(ctx):
