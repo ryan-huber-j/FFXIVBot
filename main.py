@@ -130,46 +130,68 @@ async def who_am_i(ctx):
 
 @bot.command(name="get_results", help="Retrieves participant GC ranking results")
 async def get_results(ctx):
-    channel = bot.get_channel(953332541874663434)
-    message = await channel.history().find(lambda m: 916016716889350265 in m.raw_role_mentions)
+    await ctx.message.delete()
+    channel = bot.get_channel(954126336228720701)
+    message = await channel.history().find(lambda m: 954140685592846387 in m.raw_role_mentions)
     if message is None:
         return
-    participants = set()
-    coaches = set()
+    fcm = set()
+    for mem in requests.get("https://xivapi.com/freecompany/9231394073691073564?data=FCM").json()["FreeCompanyMembers"]:
+        fcm.add(str(mem["ID"]))
+    participants = {}
+    coaches = {}
     for reaction in message.reactions:
         async for user in reaction.users():
             if reaction.emoji == "🇵":
-                participants.add(ctx.guild.get_member(user.id))
+                participants[ctx.guild.get_member(user.id).display_name] = "false"
             if reaction.emoji == "🇨":
-                coaches.add(ctx.guild.get_member(user.id))
-    x = 1
-    soup = BeautifulSoup(requests.get(f"https://na.finalfantasyxiv.com/lodestone/ranking/gc/weekly/?page=1&filter={x}"
+                coaches[ctx.guild.get_member(user.id).display_name] = "false"
+    results = {}
+    msg = None
+    first_hit = True
+    for x in range(1, 6):
+        await getResultsOnPage(results, x, fcm, participants, coaches, first_hit)
+        if msg:
+            await msg.delete()
+        msg = await ctx.send(f"{20 * x}% complete")
+    if msg:
+        await msg.delete()
+    participant_list = "\n".join(["\n".join(user[1:] for user in results if user.startswith('p')),
+                                  "\n".join(f"Rank ???: {user} - **???**" for user in participants if participants[user] == "false" and user not in coaches)])
+    coach_list = "\n".join(["\n".join(user[1:] for user in results if user.startswith('c')),
+                            "\n".join(f"Rank ???: *{user}* - **???**" for user in coaches if coaches[user] == "false")])
+    other_list = "\n".join(user[1:] for user in results if user.startswith('x'))
+    await ctx.send("\n".join(["✅ Participants\nNote: "
+                              "Italicized means that the participant was a coach, not competing for contest prizes."
+                              " Ranks Labeled \"???\" were less than the server-wide top 500 or unlisted at all.\n",
+                              participant_list.strip(), "\n🛂 Coaches", coach_list.strip(), "\n⚠ Honorable Mentions",
+                              other_list.strip()]))
+
+
+async def getResultsOnPage(results, x, fcm, participants, coaches, first_hit):
+    soup = BeautifulSoup(requests.get(f"https://na.finalfantasyxiv.com/lodestone/ranking/gc/weekly/?page={x}&filter=1"
                                       "&worldname=Siren").content, 'html.parser')
-    x = x + 1
-    participant_scores = set()
-    for participant in participants:
-        name_found = soup.find(text=participant.display_name)
-        while name_found is None:
-            if x > 5:
-                return
-            soup = BeautifulSoup(
-                requests.get(f"https://na.finalfantasyxiv.com/lodestone/ranking/gc/weekly/?page={x}&filter=1"
-                             "&worldname=Siren").content, 'html.parser')
-            x = x + 1
-            name_found = soup.find(text=participant.display_name)
-        names_info = name_found.find_parent('tr')
-        score = names_info.find("td", {"class": "ranking-character__value"}).contents
-        if score:
-            score = str(score[0]).strip()
-        print(names_info)
-        ranking = names_info.select(".ranking-character__number")[0].contents
-        if ranking:
-            ranking = str(ranking[0]).strip()
-        participant_scores.add(f"{participant.display_name} was ranked {ranking} with {score} points")
-    if participant_scores:
-        await ctx.send(f"participants: {', '.join(user for user in participant_scores)}")
-    if coaches:
-        await ctx.send(f"\ncoaches: {', '.join(user.display_name for user in coaches)}")
+    ranked_peeps = soup.select("tbody tr")
+    for result in ranked_peeps:
+        player_id = str(result["data-href"]).split("/")[3]
+        if player_id in fcm:
+            score = str(result.find("td", {"class": "ranking-character__value"}).text).strip()
+            name = str(result.find("h4").contents[0]).strip()
+            ranking = str(result.select(".ranking-character__number")[0].text).strip()
+            designation = "x"
+            it = ""
+            win = ""
+            if name in participants and name not in coaches:
+                designation = "p"
+                participants[name] = "true"
+                if first_hit:
+                    win = "WINNER"
+                    first_hit = False
+            if name in coaches:
+                designation = "c"
+                coaches[name] = "true"
+                it = "*"
+            results[f"{designation}Rank {ranking}: {it}{name}{it} - **{score}** {win}"] = None
 
 
 def get_data(ctx):
