@@ -12,6 +12,7 @@ import sqlite3
 from discord.ext import commands
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
+from typing import NamedTuple
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
@@ -19,7 +20,7 @@ GUILD = os.getenv('DISCORD_GUILD')
 
 intents = discord.Intents.default()
 intents.members = True
-bot = commands.Bot(command_prefix='!', intents=intents)
+bot = commands.Bot(command_prefix='&', intents=intents)
 
 
 @bot.event
@@ -27,54 +28,17 @@ async def on_ready():
     print(f'{bot.user.name} has connected to Discord!')
 
 
-@bot.event
-async def on_member_join(member):
-    await member.create_dm()
-    await member.dm_channel.send(
-        f'Hi {member.name}, welcome to {member.guild.name}!'
-    )
-
-
-@bot.command(name='welcome_me', help='Test')
-async def on_member_join(ctx):
-    await ctx.author.create_dm()
-    await ctx.author.dm_channel.send(
-        f'Hi {ctx.author.name}, welcome to {ctx.author.guild.name}!'
-    )
-
-
-@bot.command(name='my_ign_is')
-async def nickname_set(ctx, name):
-    await ctx.author.edit(nick=name)
-
-
-@bot.command(name='me_so_hungy')
+@bot.command(name='me_so_hungy', help='Gives member a cookie')
 async def feed(ctx):
     data = get_data(ctx)
     set_data(ctx, 'cookie_count', int(data[0][2]) + 1)
-    await ctx.send(f'Here, {ctx.author.name} have a cookie 🍪')
+    await ctx.send(f'Here, {ctx.author.display_name} have a cookie 🍪')
 
 
-@bot.command(name='count_cookies')
+@bot.command(name='count_cookies', help='Returns member\'s cookie count')
 async def count_cookies(ctx):
     data = get_data(ctx)
     await ctx.send(f'You have eaten {data[0][2]} cookies')
-
-
-@bot.command(name='99', help='Responds with a random quote from Brooklyn 99')
-async def nine_nine(ctx):
-    print('xxx')
-    brooklyn_99_quotes = [
-        'I\'m the human form of the 💯 emoji.',
-        'Bingpot!',
-        (
-            'Cool. Cool cool cool cool cool cool cool, '
-            'no doubt no doubt no doubt no doubt.'
-        ),
-    ]
-
-    response = random.choice(brooklyn_99_quotes)
-    await ctx.send(response)
 
 
 @bot.command(name='roll_dice', help='Simulates rolling dice.')
@@ -88,6 +52,7 @@ async def roll(ctx, number_of_dice: int, number_of_sides: int):
 
 @bot.command(name='ss', help='Provides character screenshot')
 async def ss(ctx, world=None, character=None):
+    await ctx.message.delete()
     if world is not None:
         print("https://ffxiv-character-cards.herokuapp.com/characters/name/" + world + "/" + character + ".png")
         response = requests.get(
@@ -110,6 +75,7 @@ async def ss(ctx, world=None, character=None):
 
 @bot.command(name='i_am', help='Stores character lodestone ID', pass_context=True)
 async def i_am(ctx, ld_id):
+    await ctx.message.delete()
     data = get_data(ctx)
     if data[0][1] is None or not ld_id == str(data[0][1]):
         set_data(ctx, 'ld_id', ld_id)
@@ -128,16 +94,16 @@ async def who_am_i(ctx):
         await ctx.send('You are ' + str(data[0][1]))
 
 
-@bot.command(name="get_results", help="Retrieves participant GC ranking results")
+@bot.command(name="get_results", help="Retrieves all FC members' weekly GC ranking results")
 async def get_results(ctx):
     await ctx.message.delete()
-    channel = bot.get_channel(954126336228720701)
-    message = await channel.history().find(lambda m: 954140685592846387 in m.raw_role_mentions)
+    channel = bot.get_channel(717282642395136001)
+    message = await channel.history().find(lambda m: 950423344803610624 in m.raw_role_mentions)
     if message is None:
         return
     fcm = set()
     for mem in requests.get("https://xivapi.com/freecompany/9231394073691073564?data=FCM").json()["FreeCompanyMembers"]:
-        fcm.add(str(mem["ID"]))
+        fcm.add(int(mem["ID"]))
     participants = {}
     coaches = {}
     for reaction in message.reactions:
@@ -148,50 +114,79 @@ async def get_results(ctx):
                 coaches[ctx.guild.get_member(user.id).display_name] = "false"
     results = {}
     msg = None
-    first_hit = True
     for x in range(1, 6):
-        await getResultsOnPage(results, x, fcm, participants, coaches, first_hit)
+        await getResultsOnPage(results, x, fcm, participants, coaches)
         if msg:
             await msg.delete()
         msg = await ctx.send(f"{20 * x}% complete")
     if msg:
         await msg.delete()
-    participant_list = "\n".join(["\n".join(user[1:] for user in results if user.startswith('p')),
+    markWinner(results)
+    participant_list = "\n".join(["\n".join(getScoreString(user) for user in results.values() if user.designation == "p"),
                                   "\n".join(f"Rank ???: {user} - **???**" for user in participants if participants[user] == "false" and user not in coaches)])
-    coach_list = "\n".join(["\n".join(user[1:] for user in results if user.startswith('c')),
+    coach_list = "\n".join(["\n".join(getScoreString(user) for user in results.values() if user.designation == "c"),
                             "\n".join(f"Rank ???: *{user}* - **???**" for user in coaches if coaches[user] == "false")])
-    other_list = "\n".join(user[1:] for user in results if user.startswith('x'))
+    other_list = "\n".join(getScoreString(user) for user in results.values() if user.designation == "x")
     await ctx.send("\n".join(["✅ Participants\nNote: "
                               "Italicized means that the participant was a coach, not competing for contest prizes."
                               " Ranks Labeled \"???\" were less than the server-wide top 500 or unlisted at all.\n",
-                              participant_list.strip(), "\n🛂 Coaches", coach_list.strip(), "\n⚠ Honorable Mentions",
+                              participant_list.strip(), "\n🛂 Coaches", coach_list.strip(), "\n⚠ Honorable Mentions\n"
+                              "These were people who were non-participants but made it to top 100 and were in our FC!",
                               other_list.strip()]))
 
 
-async def getResultsOnPage(results, x, fcm, participants, coaches, first_hit):
+def getScoreString(scorer):
+    if scorer.duplicate:
+        explanation_of_duplication = " *Note: Defaulted to highest rank listed and combined score between two ranks earned*"
+    else:
+        explanation_of_duplication = ""
+    if scorer.winner:
+        win = " WINNER"
+    else:
+        win = ""
+    if scorer.designation == "c":
+        it = "*"
+    else:
+        it = ""
+    return f"Rank {scorer.ranking}: {it}{scorer.name}{it} - **{scorer.score}**{win}{explanation_of_duplication}"
+
+
+def markWinner(results):
+    winner_id = 0
+    highest_score = 0
+    for player in results.values():
+        print(player)
+        if player.designation == "p":
+            if player.score > highest_score:
+                highest_score = player.score
+                winner_id = player.id
+    if winner_id != 0:
+        winner_info = results[winner_id]
+        results[winner_id] = Scorer(winner_id, winner_info.name, winner_info.score, winner_info.ranking, winner_info.designation, True)
+
+
+async def getResultsOnPage(results, x, fcm, participants, coaches):
     soup = BeautifulSoup(requests.get(f"https://na.finalfantasyxiv.com/lodestone/ranking/gc/weekly/?page={x}&filter=1"
                                       "&worldname=Siren").content, 'html.parser')
     ranked_peeps = soup.select("tbody tr")
     for result in ranked_peeps:
-        player_id = str(result["data-href"]).split("/")[3]
+        player_id = int(str(result["data-href"]).split("/")[3])
         if player_id in fcm:
-            score = str(result.find("td", {"class": "ranking-character__value"}).text).strip()
+            score = int(str(result.find("td", {"class": "ranking-character__value"}).text).strip())
             name = str(result.find("h4").contents[0]).strip()
-            ranking = str(result.select(".ranking-character__number")[0].text).strip()
+            ranking = int(str(result.select(".ranking-character__number")[0].text).strip())
             designation = "x"
-            it = ""
-            win = ""
+            win = False
             if name in participants and name not in coaches:
                 designation = "p"
                 participants[name] = "true"
-                if first_hit:
-                    win = "WINNER"
-                    first_hit = False
             if name in coaches:
                 designation = "c"
                 coaches[name] = "true"
-                it = "*"
-            results[f"{designation}Rank {ranking}: {it}{name}{it} - **{score}** {win}"] = None
+            if player_id in results:
+                results[player_id] = Scorer(player_id, name, score + results.get(player_id).score, results.get(player_id).ranking, designation, win, True)
+            else:
+                results[player_id] = Scorer(player_id, name, score, ranking, designation, win)
 
 
 def get_data(ctx):
@@ -227,6 +222,19 @@ def set_data(ctx, key, value):
         cursor.execute(sql, [value, ctx.author.id])
     conn.commit()
     conn.close()
+
+
+class Scorer(NamedTuple):
+    id: int
+    name: str = ""
+    score: int = 0
+    ranking: int = 0
+    designation: str = ""
+    winner: bool = False
+    duplicate: bool = False
+
+    def __eq__(self, other):
+        return self.name == other.name
 
 
 bot.run(TOKEN)
