@@ -1,8 +1,3 @@
-# This is a sample Python script.
-
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
-
 import os
 import random
 
@@ -13,6 +8,7 @@ from discord.ext import commands
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
 from typing import NamedTuple
+from datetime import date
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
@@ -30,8 +26,13 @@ async def on_ready():
 @bot.command(name='me_so_hungy', help='Gives member a cookie')
 async def feed(ctx):
     data = get_data(ctx)
-    set_data(ctx, 'cookie_count', int(data[0][2]) + 1)
-    await ctx.send(f'Here, {ctx.author.display_name} have a cookie 🍪')
+    today = date.today().strftime("%Y-%m-%d")
+    if data[0][3] != today:
+        set_data(ctx, 'cookie_count', int(data[0][2]) + 1)
+        set_data(ctx, 'last_cookie_date', today)
+        await ctx.send(f'Here, {ctx.author.display_name}, have a cookie 🍪')
+    else:
+        await ctx.send(f'You already had a cookie today, {ctx.author.display_name}')
 
 
 @bot.command(name='count_cookies', help='Returns member\'s cookie count')
