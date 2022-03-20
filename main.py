@@ -16,7 +16,6 @@ from typing import NamedTuple
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
-GUILD = os.getenv('DISCORD_GUILD')
 
 intents = discord.Intents.default()
 intents.members = True
@@ -59,9 +58,10 @@ async def ss(ctx, world=None, character=None):
             "https://ffxiv-character-cards.herokuapp.com/characters/name/" + world + "/" + character + ".png")
     else:
         data = get_data(ctx)
-        if len(data) == 0:
+        if len(data) == 0 or data[0][1] is None:
             await ctx.send("I do not know who you are. Please enter your lodestone ID using the command: \"i_am {"
                            "lodestone ID}")
+            return
         print("https://ffxiv-character-cards.herokuapp.com/characters/id/" + str(data[0][1]) + ".png")
         response = requests.get("https://ffxiv-character-cards.herokuapp.com/characters/id/" + str(data[0][1]) + ".png")
     if response.status_code != 200:
@@ -97,8 +97,15 @@ async def who_am_i(ctx):
 @bot.command(name="get_results", help="Retrieves all FC members' weekly GC ranking results")
 async def get_results(ctx):
     await ctx.message.delete()
-    channel = bot.get_channel(717282642395136001)
-    message = await channel.history().find(lambda m: 950423344803610624 in m.raw_role_mentions)
+    channel = discord.utils.get(ctx.guild.channels, name='professionals-signups')
+    if channel is None:
+        await ctx.send("no channel named *professionals-signups* exists")
+        return
+    role = discord.utils.get(ctx.guild.roles, name="Professional")
+    if role is None:
+        await ctx.send("no role names *Professional* mentioned in channel named *professionals-signups*")
+        return
+    message = await channel.history().find(lambda m: role.id in m.raw_role_mentions)
     if message is None:
         return
     fcm = set()
@@ -191,7 +198,7 @@ async def getResultsOnPage(results, x, fcm, participants, coaches):
 
 def get_data(ctx):
     # define database
-    conn = sqlite3.connect("bot")
+    conn = sqlite3.connect("data")
     cursor = conn.cursor()
     # get stored object from database
     sql = "SELECT * FROM bot WHERE d_id=?"
@@ -208,7 +215,7 @@ def get_data(ctx):
 
 
 def set_data(ctx, key, value):
-    conn = sqlite3.connect("bot")
+    conn = sqlite3.connect("data")
     cursor = conn.cursor()
     sql = "SELECT * FROM bot WHERE d_id=?"
     cursor.execute(sql, [ctx.author.id])
