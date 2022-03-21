@@ -1,5 +1,6 @@
 import os
 import random
+import string
 
 import discord
 import requests
@@ -117,9 +118,9 @@ async def get_results(ctx):
     for reaction in message.reactions:
         async for user in reaction.users():
             if reaction.emoji == "🇵":
-                participants[ctx.guild.get_member(user.id).display_name] = "false"
+                participants[str(ctx.guild.get_member(user.id).display_name).lstrip(string.punctuation + string.whitespace)] = "false"
             if reaction.emoji == "🇨":
-                coaches[ctx.guild.get_member(user.id).display_name] = "false"
+                coaches[str(ctx.guild.get_member(user.id).display_name).lstrip(string.punctuation + string.whitespace)] = "false"
     results = {}
     msg = None
     for x in range(1, 6):
