@@ -105,10 +105,16 @@ async def get_results(ctx):
         return
     role = discord.utils.get(ctx.guild.roles, name="Professional")
     if role is None:
-        await ctx.send("no role names *Professional* mentioned in channel named *professionals-signups*")
+        await ctx.send("no role named *Professional* in channel named *professionals-signups*")
         return
-    message = await channel.history().find(lambda m: role.id in m.raw_role_mentions)
+    messages = [message async for message in channel.history(limit=100, oldest_first=False)]
+    message = None
+    for m in messages:
+        if role.id in m.raw_role_mentions:
+            message = m
+            break
     if message is None:
+        await ctx.send("no role named *Professional* mentioned in channel named *professionals-signups*")
         return
     fcm = set()
     for mem in requests.get("https://xivapi.com/freecompany/9231394073691073564?data=FCM").json()["FreeCompanyMembers"]:
@@ -140,7 +146,7 @@ async def get_results(ctx):
                               "Italicized means that the participant was a coach, not competing for contest prizes."
                               " Ranks Labeled \"???\" were less than the server-wide top 500 or unlisted at all.\n",
                               participant_list.strip(), "\n🛂 Coaches", coach_list.strip(), "\n⚠ Honorable Mentions\n"
-                              "These were people who were non-participants but made it to top 100 and were in our FC!",
+                              "These were people who were non-participants but made it to top 500 and were in our FC!",
                               other_list.strip()]))
 
 
@@ -157,7 +163,7 @@ def getScoreString(scorer):
         it = "*"
     else:
         it = ""
-    return f"Rank {scorer.ranking}: {it}{scorer.name}{it} - **{scorer.score}**{win}{explanation_of_duplication}"
+    return f"Rank {scorer.ranking}: {it}{scorer.name}{it} - **{scorer.score:,}**{win}{explanation_of_duplication}"
 
 
 def markWinner(results):
