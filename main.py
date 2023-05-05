@@ -137,48 +137,50 @@ async def get_results(ctx):
         msg = await ctx.send(f"{20 * x}% complete")
     if msg:
         await msg.delete()
-    markWinner(results)
-    participant_list = "\n".join(["\n".join(getScoreString(user) for user in results.values() if user.designation == "p"),
+    winner = mark_winner(results)
+    winner_discord_id = next(filter(lambda member: member.nick == winner.name, ctx.guild.members)).id
+
+    participant_list = "\n".join(["\n".join(build_score_message(user) for user in results.values() if user.designation == "p"),
                                   "\n".join(f"Rank ???: {user} - **???**" for user in participants if participants[user] == "false" and user not in coaches)])
-    coach_list = "\n".join(["\n".join(getScoreString(user) for user in results.values() if user.designation == "c"),
+    coach_list = "\n".join(["\n".join(build_score_message(user) for user in results.values() if user.designation == "c"),
                             "\n".join(f"Rank ???: *{user}* - **???**" for user in coaches if coaches[user] == "false")])
-    other_list = "\n".join(getScoreString(user) for user in results.values() if user.designation == "x")
+    other_list = "\n".join(build_score_message(user) for user in results.values() if user.designation == "x")
     await ctx.send("\n".join(["✅ Participants\nNote: "
                               "Italicized means that the participant was a coach, not competing for contest prizes."
                               " Ranks Labeled \"???\" were less than the server-wide top 500 or unlisted at all.\n",
                               participant_list.strip(), "\n🛂 Coaches", coach_list.strip(), "\n⚠ Honorable Mentions\n"
                               "These were people who were non-participants but made it to top 500 and were in our FC!",
-                              other_list.strip()]))
+                              other_list.strip(),
+                              f"\nFor winning, {mention(winner_discord_id)} gets to choose from:\n"
+                               "Any Mog Station Items equaling $14.00 USD (before tax; some Square Enix implemented limitations apply).\n"
+                               "or\n"
+                               "$14.00 Amazon Gift Card"]))
 
 
-def getScoreString(scorer):
-    if scorer.duplicate:
-        explanation_of_duplication = " *Note: Defaulted to highest rank listed and combined score between two ranks earned*"
-    else:
-        explanation_of_duplication = ""
-    if scorer.winner:
-        win = " WINNER"
-    else:
-        win = ""
-    if scorer.designation == "c":
-        it = "*"
-    else:
-        it = ""
-    return f"Rank {scorer.ranking}: {it}{scorer.name}{it} - **{scorer.score:,}**{win}{explanation_of_duplication}"
+def mention(user_id):
+    return f"<@{user_id}>"
 
 
-def markWinner(results):
-    winner_id = 0
-    highest_score = 0
-    for player in results.values():
-        print(player)
-        if player.designation == "p":
-            if player.score > highest_score:
-                highest_score = player.score
-                winner_id = player.id
-    if winner_id != 0:
+def mark_winner(results):
+    participants = dict((id, player) for (id, player) in results.items() if player.designation == "p")
+    winner_id = max(participants, key=participants.get, default=-1)
+    if winner_id >= 0:
         winner_info = results[winner_id]
-        results[winner_id] = Scorer(winner_id, winner_info.name, winner_info.score, winner_info.ranking, winner_info.designation, True)
+        marked_winner = Scorer(winner_id, winner_info.name, winner_info.score, winner_info.ranking, winner_info.designation, True)
+        results[winner_id] = marked_winner
+        return marked_winner
+    else:
+        return None
+
+DUPLICATION_EXPLANATION = " *Note: Defaulted to highest rank listed and combined score between two ranks earned*"
+WINNER_MESSAGE = " WINNER"
+
+def build_score_message(player):
+    duplication_explanation = DUPLICATION_EXPLANATION if player.duplicate else ""
+    win_segment = WINNER_MESSAGE if player.winner else ""
+    name_segment = f"*{player.name}*" if player.designation == "c" else player.name
+
+    return f"Rank {player.ranking}: {name_segment} - **{player.score:,}**{win_segment}{duplication_explanation}"
 
 
 async def getResultsOnPage(results, x, fcm, participants, coaches):
