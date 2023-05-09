@@ -134,8 +134,19 @@ async def get_results(ctx):
         msg = await ctx.send(f"{20 * x}% complete")
     if msg:
         await msg.delete()
+    
     winner = mark_winner(results)
-    winner_discord_id = next(filter(lambda member: member.nick == winner.name, ctx.guild.members)).id
+
+    if len(results) == 0:
+        await ctx.send("Unfortunately I could not find any participants who qualified to win.")
+        return
+
+    try:
+        winner_discord_id = next(filter(lambda member: member.nick == winner.name, ctx.guild.members)).id
+    except (StopIteration):
+        await ctx.send(
+            f'A winner, "{winner.name}" was found, but I was unable to find their name in Discord to mention them. Please verify that their nickname matches their character name.')
+        return
 
     participant_list = "\n".join(["\n".join(build_score_message(user) for user in results.values() if user.designation == "p"),
                                   "\n".join(f"Rank ???: {user} - **???**" for user in participants if participants[user] == "false" and user not in coaches)])
