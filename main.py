@@ -11,9 +11,6 @@ from bs4 import BeautifulSoup
 from typing import NamedTuple
 from datetime import date
 
-load_dotenv()
-TOKEN = os.getenv('DISCORD_TOKEN')
-
 intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True
@@ -163,7 +160,7 @@ def mention(user_id):
 
 def mark_winner(results):
     participants = dict((id, player) for (id, player) in results.items() if player.designation == "p")
-    winner_id = max(participants, key=participants.get, default=-1)
+    winner_id = max(participants, key=lambda id: participants[id].score, default=-1)
     if winner_id >= 0:
         winner_info = results[winner_id]
         marked_winner = Scorer(winner_id, winner_info.name, winner_info.score, winner_info.ranking, winner_info.designation, True)
@@ -255,4 +252,6 @@ class Scorer(NamedTuple):
         return self.name == other.name
 
 
-bot.run(TOKEN)
+if __name__ == "__main__":
+    load_dotenv()
+    bot.run(os.getenv('DISCORD_TOKEN'))
