@@ -70,28 +70,34 @@ async def get_results(ctx):
         await ctx.send("Unfortunately I could not find any participants who qualified to win.")
         return
 
-    try:
-        winner_discord_id = next(filter(lambda member: member.nick == winner.name, ctx.guild.members)).id
-    except (StopIteration):
-        await ctx.send(
-            f'A winner, "{winner.name}" was found, but I was unable to find their name in Discord to mention them. Please verify that their nickname matches their character name.')
-        return
-
     participant_list = "\n".join(["\n".join(build_score_message(user) for user in results.values() if user.designation == "p"),
                                   "\n".join(f"Rank ???: {user} - **???**" for user in participants if participants[user] == "false" and user not in coaches)])
     coach_list = "\n".join(["\n".join(build_score_message(user) for user in results.values() if user.designation == "c"),
                             "\n".join(f"Rank ???: *{user}* - **???**" for user in coaches if coaches[user] == "false")])
-    other_list = "\n".join(build_score_message(user) for user in results.values() if user.designation == "x")
-    await ctx.send("\n".join(["✅ Participants\nNote: "
+    honorable_mentions_list = "\n".join(build_score_message(user) for user in results.values() if user.designation == "x")
+
+    message_parts = ["✅ Participants\nNote: "
                               "Italicized means that the participant was a coach, not competing for contest prizes."
                               " Ranks Labeled \"???\" were less than the server-wide top 500 or unlisted at all.\n",
                               participant_list.strip(), "\n🛂 Coaches", coach_list.strip(), "\n⚠ Honorable Mentions\n"
                               "These were people who were non-participants but made it to top 500 and were in our FC!",
-                              other_list.strip(),
-                              f"\nFor winning, {mention(winner_discord_id)} gets to choose from:\n"
+                              honorable_mentions_list.strip()]
+
+
+    if winner is not None:
+        try:
+            winner_discord_id = next(filter(lambda member: member.nick == winner.name, ctx.guild.members)).id
+        except (StopIteration):
+            await ctx.send(
+                f'A winner, "{winner.name}" was found, but I was unable to find their name in Discord to mention them. Please verify that their nickname matches their character name.')
+            return
+        
+        message_parts.append(f"\nFor winning, {mention(winner_discord_id)} gets to choose from:\n"
                                "Any Mog Station Items equaling $14.00 USD (before tax; some Square Enix implemented limitations apply).\n"
                                "or\n"
-                               "$14.00 Amazon Gift Card"]))
+                               "$14.00 Amazon Gift Card")
+
+    await ctx.send("\n".join(message_parts))
 
 
 def mention(user_id):
