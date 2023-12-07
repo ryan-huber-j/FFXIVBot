@@ -24,178 +24,74 @@ class TestLodestoneScraper(unittest.TestCase):
 
   def fake_lodestone_call(self, url):
     return self.mock_responses[url]
+  
+
+  def fake_member_entry(self, name):
+    return f'''
+      <li class="entry">
+        <a href="href" class="entry__bg">
+          <div class="entry__flex">
+            <div class="entry__freecompany__center">
+              <p class="entry__name">{name}</p>
+              </ul>
+            </div>
+          </div>
+        </a>
+      </li>
+    '''
 
 
-  def add_mock_response(self, fc_id, response, page=None):
+  def add_mock_response(self, status, members, page, max_pages):
     if page is None:
-      key = f'{BASE_URL}/lodestone/freecompany/{fc_id}/member'
+      page = 1
+      key = f'{BASE_URL}/lodestone/freecompany/{FC_ID}/member'
     else:
-      key = f'{BASE_URL}/lodestone/freecompany/{fc_id}/member?page={page}'
-    self.mock_responses[key] = response
+      key = f'{BASE_URL}/lodestone/freecompany/{FC_ID}/member?page={page}'
 
+    member_entries = '\n'.join(self.fake_member_entry(name) for name in members)
 
-  def test_get_free_company_members_no_members(self):
-    body = '''
+    body = f'''
     <body>
       <ul class="btn__pager">
-	      <li class="btn__pager__current">Page 1 of 1</li>
+	      <li class="btn__pager__current">Page {page} of {max_pages}</li>
       </ul>
       <ul>
+        {member_entries}
 		  </ul>
     </body>
     '''
 
-    self.add_mock_response(FC_ID, FakeResponse(200, body))
+    self.mock_responses[key] = FakeResponse(status, body)
+
+
+  def test_get_free_company_members_no_members(self):
+    self.add_mock_response(status=200, members=[], page=None, max_pages=1)
     results = self.scraper.get_free_company_members(FC_ID)
     self.assertListEqual(list(results), [])
 
 
   def test_get_free_company_members_one_member_one_page(self):
-    body = '''
-    <body>
-      <ul class="btn__pager">
-	      <li class="btn__pager__current">Page 1 of 1</li>
-      </ul>
-      <ul>
-        <li class="entry">
-          <a href="href" class="entry__bg">
-            <div class="entry__flex">
-              <div class="entry__freecompany__center">
-                <p class="entry__name">Kiryuin Satsuki</p>
-                </ul>
-              </div>
-            </div>
-          </a>
-        </li>
-		  </ul>
-    </body>
-    '''
-
-    self.add_mock_response(FC_ID, FakeResponse(200, body))
+    members=['Kiryuin Satsuki']
+    self.add_mock_response(status=200, members=members, page=None, max_pages=1)
     results = self.scraper.get_free_company_members(FC_ID)
-    self.assertListEqual(list(results), ['Kiryuin Satsuki'])
+    self.assertListEqual(list(results), members)
 
 
   def test_get_free_company_members_two_members_one_page(self):
-    body = '''
-    <body>
-      <ul class="btn__pager">
-	      <li class="btn__pager__current">Page 1 of 1</li>
-      </ul>
-      <ul>
-        <li class="entry">
-          <a href="href" class="entry__bg">
-            <div class="entry__flex">
-              <div class="entry__freecompany__center">
-                <p class="entry__name">Kiryuin Satsuki</p>
-                </ul>
-              </div>
-            </div>
-          </a>
-        </li>
-        <li class="entry">
-          <a href="href" class="entry__bg">
-            <div class="entry__flex">
-              <div class="entry__freecompany__center">
-                <p class="entry__name">Juhdu Khigbaa</p>
-                </ul>
-              </div>
-            </div>
-          </a>
-        </li>
-		  </ul>
-    </body>
-    '''
-
-    self.add_mock_response(FC_ID, FakeResponse(200, body))
+    members=['Kiryuin Satsuki', 'Juhdu Khigbaa']
+    self.add_mock_response(status=200, members=members, page=None, max_pages=1)
     results = self.scraper.get_free_company_members(FC_ID)
-    self.assertListEqual(list(results), ['Kiryuin Satsuki', 'Juhdu Khigbaa'])
+    self.assertListEqual(list(results), members)
 
 
   def test_get_free_company_members_many_members_three_pages(self):
-    page1 = '''
-    <body>
-      <ul class="btn__pager">
-	      <li class="btn__pager__current">Page 1 of 3</li>
-      </ul>
-      <ul>
-        <li class="entry">
-          <a href="href" class="entry__bg">
-            <div class="entry__flex">
-              <div class="entry__freecompany__center">
-                <p class="entry__name">Kiryuin Satsuki</p>
-                </ul>
-              </div>
-            </div>
-          </a>
-        </li>
-        <li class="entry">
-          <a href="href" class="entry__bg">
-            <div class="entry__flex">
-              <div class="entry__freecompany__center">
-                <p class="entry__name">Juhdu Khigbaa</p>
-                </ul>
-              </div>
-            </div>
-          </a>
-        </li>
-		  </ul>
-    </body>
-    '''
+    page1_members = ['Kiryuin Satsuki', 'Juhdu Khigbaa']
+    page2_members = ['FC Member 3', 'FC Member 4']
+    page3_members = ['FC Member 5']
 
-    page2 = '''
-    <body>
-      <ul class="btn__pager">
-	      <li class="btn__pager__current">Page 1 of 3</li>
-      </ul>
-      <ul>
-        <li class="entry">
-          <a href="href" class="entry__bg">
-            <div class="entry__flex">
-              <div class="entry__freecompany__center">
-                <p class="entry__name">FC Member 3</p>
-                </ul>
-              </div>
-            </div>
-          </a>
-        </li>
-        <li class="entry">
-          <a href="href" class="entry__bg">
-            <div class="entry__flex">
-              <div class="entry__freecompany__center">
-                <p class="entry__name">FC Member 4</p>
-                </ul>
-              </div>
-            </div>
-          </a>
-        </li>
-		  </ul>
-    </body>
-    '''
-
-    page3 = '''
-    <body>
-      <ul class="btn__pager">
-	      <li class="btn__pager__current">Page 1 of 3</li>
-      </ul>
-      <ul>
-        <li class="entry">
-          <a href="href" class="entry__bg">
-            <div class="entry__flex">
-              <div class="entry__freecompany__center">
-                <p class="entry__name">FC Member 5</p>
-                </ul>
-              </div>
-            </div>
-          </a>
-        </li>
-		  </ul>
-    </body>
-    '''
-
-    self.add_mock_response(FC_ID, FakeResponse(200, page1))
-    self.add_mock_response(FC_ID, FakeResponse(200, page2), 2)
-    self.add_mock_response(FC_ID, FakeResponse(200, page3), 3)
+    self.add_mock_response(status=200, members=page1_members, page=None, max_pages=3)
+    self.add_mock_response(status=200, members=page2_members, page=2, max_pages=3)
+    self.add_mock_response(status=200, members=page3_members, page=3, max_pages=3)
 
     results = self.scraper.get_free_company_members(FC_ID)
-    self.assertListEqual(list(results), ['Kiryuin Satsuki', 'Juhdu Khigbaa', 'FC Member 3', 'FC Member 4', 'FC Member 5'])
+    self.assertListEqual(list(results), page1_members + page2_members + page3_members)
