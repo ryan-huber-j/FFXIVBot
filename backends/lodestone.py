@@ -7,12 +7,12 @@ _page_number_regex = re.compile('Page \d of (\d)')
 
 
 class LodestoneScraperException(Exception):
-  def __init__(self, status_code, message):
+  def __init__(self, message, status_code=None):
+    super().__init__(message)
     self.status_code = status_code
-    self.__init__(message)
 
 
-class LodestoneScraperClient:
+class LodestoneScraper:
   def __init__(self, base_url):
     self._base_url = base_url
 
@@ -49,7 +49,7 @@ class LodestoneScraperClient:
     page_number_tag = soup.find('li', class_='btn__pager__current')
     match = _page_number_regex.fullmatch(page_number_tag.string)
     if match is None:
-      raise LodestoneScraperException(None, f'Unable to parse page number from following: {page_number_tag.string}')
+      raise LodestoneScraperException(f'Unable to parse page number from following: {page_number_tag.string}')
     num_pages = int(match.group(1))
 
     member_names = self._scrape_fc_member_names(soup)
