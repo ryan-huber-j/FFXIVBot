@@ -1,6 +1,6 @@
 import unittest
 
-from main import Scorer, mark_winner
+from bot import Scorer, mark_winner
 
 class TestMainBotFunctions(unittest.TestCase):
     def test_mark_winner_empty_map(self):
