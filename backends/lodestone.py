@@ -56,11 +56,11 @@ class LodestoneScraper:
     return response
   
 
-  def _scrape_members_from_page(self, page):
+  def _scrape_members_from_page(self, page: BeautifulSoup):
     fc_members = []
 
-    member_list_items_tag = page.find_all('li', class_='entry')
-    for member_tag in member_list_items_tag:
+    member_list_items_tags = page.find_all('li', class_='entry')
+    for member_tag in member_list_items_tags:
       character_link_tag = member_tag.find('a', class_='entry__bg')
       character_link = character_link_tag['href']
       lodestone_id_match = _character_link_regex.fullmatch(character_link)
@@ -78,7 +78,7 @@ class LodestoneScraper:
     return fc_members
 
 
-  def get_free_company_members(self, fc_id):
+  def get_free_company_members(self, fc_id: str):
     response = self._get_fc_members_page(fc_id)
     soup = BeautifulSoup(response.content, 'html.parser')
 
