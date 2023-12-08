@@ -99,5 +99,6 @@ class TestLodestoneScraper(unittest.TestCase):
     self.assertListEqual(list(results), page1_members + page2_members + page3_members)
 
   def test_get_free_company_members_error_states(self):
-    self.add_mock_response(404)
-    self.assertRaises(LodestoneScraperException, lambda: self.scraper.get_free_company_members(FC_ID))
+    for status_code in [400, 404, 429, 500]:
+      self.add_mock_response(status_code)
+      self.assertRaises(LodestoneScraperException, lambda: self.scraper.get_free_company_members(FC_ID))

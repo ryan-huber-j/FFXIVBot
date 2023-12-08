@@ -15,6 +15,14 @@ class FCMember:
   rank: str
 
 
+@dataclass
+class GrandCompanyRanking:
+  id: str
+  name: str
+  rank: int
+  company_seals: int
+
+
 class LodestoneScraperException(Exception):
   def __init__(self, message: str, status_code: int = None):
     super().__init__(message)
@@ -36,8 +44,10 @@ class LodestoneScraper:
 
     if response.status_code == 404:
       raise LodestoneScraperException(f'Free Company {fc_id} could not be found', response.status_code)
+    elif response.status_code == 429:
+      raise LodestoneScraperException(f'Unable to fetch Free Company members due to Lodestone rate limiting')
     elif response.status_code >= 400 and response.status_code < 500:
-      LodestoneScraperException(f'Failed to access FC {fc_id} members due to an unknown client error', response.status_code)
+      raise LodestoneScraperException(f'Failed to access FC {fc_id} members due to an unknown client error', response.status_code)
     elif response.status_code >= 500:
       raise LodestoneScraperException('The Lodestone appears to be down', response.status_code)
     elif response.status_code != 200:
@@ -66,6 +76,24 @@ class LodestoneScraper:
       fc_members.append(FCMember(lodestone_id, member_name, member_rank))
 
     return fc_members
+  
+
+  def _fetch_grand_company_rankings_page(self, world: str, page_num: int = 1):
+    response = requests.get(
+      f"https://na.finalfantasyxiv.com/lodestone/ranking/gc/weekly?"
+      "page={page_num}&filter=1&worldname={world}"
+    )
+
+    if response.status_code == 404:
+      raise LodestoneScraperException(f'Could not find Grand Company rankings for {world}', response.status_code)
+    elif response.status_code == 429:
+      raise LodestoneScraperException(f'Unable to fetch Grand Company rankings due to Lodestone rate limiting')
+    elif response.status_code >= 400 and response.status_code < 500:
+      LodestoneScraperException(f'Could not find Grand Company rankings due to an unknown client error', response.status_code)
+    elif response.status_code >= 500:
+      raise LodestoneScraperException('The Lodestone appears to be down', response.status_code)
+    elif response.status_code != 200:
+      raise LodestoneScraperException(f'Could not find Grand Company rankings due to an unknown issue', response.status_code)
 
 
   def get_free_company_members(self, fc_id: str):
@@ -85,3 +113,6 @@ class LodestoneScraper:
       members += self._scrape_members_from_page(soup)
 
     return members
+  
+  def get_grand_company_rankings(self, world: str):
+    pass
