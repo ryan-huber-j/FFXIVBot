@@ -1,4 +1,5 @@
 from bs4 import BeautifulSoup
+from dataclasses import dataclass
 import re
 import requests
 
@@ -7,22 +8,11 @@ _page_number_regex = re.compile('Page \d of (\d)')
 _character_link_regex = re.compile('/lodestone/character/(.+)/')
 
 
+@dataclass
 class FCMember:
-  def __init__(self, id: str, name: str, rank: str):
-    self.id = id
-    self.name = name
-    self.rank = rank
-
-  def __eq__(self, other: object) -> bool:
-    if type(other) != FCMember:
-      return False
-    return self.id == other.id and self.name == other.name and self.rank == other.rank
-  
-  def __str__(self) -> str:
-    return f'FCMember(id={self.id}, name={self.name}, rank={self.rank})'
-  
-  def __repr__(self) -> str:
-    return self.__str__()
+  id: str
+  name: str
+  rank: str
 
 
 class LodestoneScraperException(Exception):
