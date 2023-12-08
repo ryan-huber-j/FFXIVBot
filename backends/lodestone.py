@@ -8,7 +8,7 @@ _character_link_regex = re.compile('/lodestone/character/(.+)/')
 
 
 class FCMember:
-  def __init__(self, id, name, rank):
+  def __init__(self, id: str, name: str, rank: str):
     self.id = id
     self.name = name
     self.rank = rank
@@ -26,21 +26,21 @@ class FCMember:
 
 
 class LodestoneScraperException(Exception):
-  def __init__(self, message, status_code=None):
+  def __init__(self, message: str, status_code: int = None):
     super().__init__(message)
     self.status_code = status_code
 
 
 class LodestoneScraper:
-  def __init__(self, base_url):
+  def __init__(self, base_url: str):
     self._base_url = base_url
 
 
-  def _call_lodestone(self, fc_id, page=None):
-    if page is None:
+  def _get_fc_members_page(self, fc_id: str, page_num: int = None):
+    if page_num is None:
       url = f'{self._base_url}/lodestone/freecompany/{fc_id}/member'
     else:
-      url = f'{self._base_url}/lodestone/freecompany/{fc_id}/member?page={page}'
+      url = f'{self._base_url}/lodestone/freecompany/{fc_id}/member?page={page_num}'
 
     response = requests.get(url)
 
@@ -79,7 +79,7 @@ class LodestoneScraper:
 
 
   def get_free_company_members(self, fc_id):
-    response = self._call_lodestone(fc_id)
+    response = self._get_fc_members_page(fc_id)
     soup = BeautifulSoup(response.content, 'html.parser')
 
     page_number_tag = soup.find('li', class_='btn__pager__current')
@@ -90,7 +90,7 @@ class LodestoneScraper:
 
     members = self._scrape_members_from_page(soup)
     for page_num in range(2, num_pages+1):
-      response = self._call_lodestone(fc_id, page_num)
+      response = self._get_fc_members_page(fc_id, page_num)
       soup = BeautifulSoup(response.content, 'html.parser')
       members += self._scrape_members_from_page(soup)
 
