@@ -4,7 +4,7 @@ import requests
 
 
 _page_number_regex = re.compile('Page \d of (\d)')
-_character_lodestone_link_regex = re.compile('/lodestone/character/(.+)/')
+_character_link_regex = re.compile('/lodestone/character/(.+)/')
 
 
 class FCMember:
@@ -12,7 +12,6 @@ class FCMember:
     self.id = id
     self.name = name
     self.rank = rank
-
 
   def __eq__(self, other: object) -> bool:
     if type(other) != FCMember:
@@ -57,16 +56,16 @@ class LodestoneScraper:
     return response
   
 
-  def _scrape_members_from_page(self, soup):
+  def _scrape_members_from_page(self, page):
     fc_members = []
 
-    member_list_items_tag = soup.find_all('li', class_='entry')
+    member_list_items_tag = page.find_all('li', class_='entry')
     for member_tag in member_list_items_tag:
       character_link_tag = member_tag.find('a', class_='entry__bg')
-      lodestone_link = character_link_tag['href']
-      lodestone_id_match = _character_lodestone_link_regex.fullmatch(lodestone_link)
+      character_link = character_link_tag['href']
+      lodestone_id_match = _character_link_regex.fullmatch(character_link)
       if lodestone_id_match is None:
-        raise LodestoneScraperException(f'Unable to parse character lodestone ID from following: {lodestone_link}')
+        raise LodestoneScraperException(f'Unable to parse character lodestone ID from following: {character_link}')
       lodestone_id = lodestone_id_match.group(1)
 
       member_name = member_tag.find('p', class_='entry__name').string
