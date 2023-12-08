@@ -6,6 +6,8 @@ from discord.ext import commands
 from bs4 import BeautifulSoup
 from typing import NamedTuple
 
+from backends.lodestone import LodestoneScraper
+
 
 DUPLICATION_EXPLANATION = " *Note: Defaulted to highest rank listed and combined score between two ranks earned*"
 WINNER_MESSAGE = " WINNER"
@@ -23,6 +25,12 @@ def run_bot(discord_token):
 @bot.event
 async def on_ready():
     print(f'{bot.user.name} has connected to Discord!')
+
+
+def get_fc_member_ids() -> list[str]:
+    scraper = LodestoneScraper('https://na.finalfantasyxiv.com')
+    fc_members = scraper.get_free_company_members('9231394073691073564')
+    return [member.id for member in fc_members]
 
 
 @bot.command(name="get_results", help="Retrieves all FC members' weekly GC ranking results")
@@ -45,9 +53,7 @@ async def get_results(ctx):
     if message is None:
         await ctx.send("no role named *Professional* mentioned in channel named *professionals-signups*")
         return
-    fcm = set()
-    for mem in requests.get("https://xivapi.com/freecompany/9231394073691073564?data=FCM").json()["FreeCompanyMembers"]:
-        fcm.add(int(mem["ID"]))
+    fcm = set(get_fc_member_ids())
     participants = {}
     coaches = {}
     for reaction in message.reactions:
@@ -131,7 +137,7 @@ async def getResultsOnPage(results, x, fcm, participants, coaches):
                                       "&worldname=Siren").content, 'html.parser')
     ranked_peeps = soup.select("tbody tr")
     for result in ranked_peeps:
-        player_id = int(str(result["data-href"]).split("/")[3])
+        player_id = str(result["data-href"]).split("/")[3]
         if player_id in fcm:
             score = int(str(result.find("td", {"class": "ranking-character__value"}).text).strip())
             name = str(result.find("h4").contents[0]).strip()
