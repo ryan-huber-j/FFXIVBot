@@ -4,6 +4,26 @@ import requests
 
 
 _page_number_regex = re.compile('Page \d of (\d)')
+_character_lodestone_link_regex = re.compile('/lodestone/character/(.+)/')
+
+
+class FCMember:
+  def __init__(self, id, name, rank):
+    self.id = id
+    self.name = name
+    self.rank = rank
+
+
+  def __eq__(self, other: object) -> bool:
+    if type(other) != FCMember:
+      return False
+    return self.id == other.id and self.name == other.name and self.rank == other.rank
+  
+  def __str__(self) -> str:
+    return f'FCMember(id={self.id}, name={self.name}, rank={self.rank})'
+  
+  def __repr__(self) -> str:
+    return self.__str__()
 
 
 class LodestoneScraperException(Exception):
@@ -37,9 +57,26 @@ class LodestoneScraper:
     return response
   
 
-  def _scrape_fc_member_names(self, soup):
-    fc_member_name_tags = soup.find_all('p', class_='entry__name')
-    return [tag.string for tag in fc_member_name_tags]
+  def _scrape_members_from_page(self, soup):
+    fc_members = []
+
+    member_list_items_tag = soup.find_all('li', class_='entry')
+    for member_tag in member_list_items_tag:
+      character_link_tag = member_tag.find('a', class_='entry__bg')
+      lodestone_link = character_link_tag['href']
+      lodestone_id_match = _character_lodestone_link_regex.fullmatch(lodestone_link)
+      if lodestone_id_match is None:
+        raise LodestoneScraperException(f'Unable to parse character lodestone ID from following: {lodestone_link}')
+      lodestone_id = lodestone_id_match.group(1)
+
+      member_name = member_tag.find('p', class_='entry__name').string
+
+      member_fc_info_tag = member_tag.find('ul', class_='entry__freecompany__info')
+      member_rank = member_fc_info_tag.find('li').find('span').string
+
+      fc_members.append(FCMember(lodestone_id, member_name, member_rank))
+
+    return fc_members
 
 
   def get_free_company_members(self, fc_id):
@@ -52,10 +89,10 @@ class LodestoneScraper:
       raise LodestoneScraperException(f'Unable to parse page number from following: {page_number_tag.string}')
     num_pages = int(match.group(1))
 
-    member_names = self._scrape_fc_member_names(soup)
+    members = self._scrape_members_from_page(soup)
     for page_num in range(2, num_pages+1):
       response = self._call_lodestone(fc_id, page_num)
       soup = BeautifulSoup(response.content, 'html.parser')
-      member_names += self._scrape_fc_member_names(soup)
+      members += self._scrape_members_from_page(soup)
 
-    return member_names
+    return members

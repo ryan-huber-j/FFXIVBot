@@ -2,7 +2,7 @@ import unittest
 import unittest.mock
 import requests
 
-from backends.lodestone import LodestoneScraper, LodestoneScraperException
+from backends.lodestone import FCMember, LodestoneScraper, LodestoneScraperException
 
 
 BASE_URL = 'https://some.lodestone.url.com'
@@ -26,18 +26,18 @@ class TestLodestoneScraper(unittest.TestCase):
     return self.mock_responses[url]
   
 
-  def fake_member_entry(self, name):
+  def fake_member_entry(self, member):
     return f'''
-      <li class="entry">
-        <a href="href" class="entry__bg">
-          <div class="entry__flex">
-            <div class="entry__freecompany__center">
-              <p class="entry__name">{name}</p>
-              </ul>
-            </div>
+      <li class="entry"><a href="/lodestone/character/{member.id}/" class="entry__bg">
+        <div class="entry__flex">
+          <div class="entry__freecompany__center"><p class="entry__name">{member.name}</p>
+            <ul class="entry__freecompany__info">
+              <li><img src="img-url" width="20"
+                      height="20" alt=""><span>{member.rank}</span></li>
+            </ul>
           </div>
-        </a>
-      </li>
+        </div>
+      </a></li>
     '''
 
 
@@ -49,7 +49,7 @@ class TestLodestoneScraper(unittest.TestCase):
       key = f'{BASE_URL}/lodestone/freecompany/{FC_ID}/member?page={page}'
 
     if members is not None:
-      member_entries = '\n'.join(self.fake_member_entry(name) for name in members)
+      member_entries = '\n'.join(self.fake_member_entry(member) for member in members)
       body = f'''
       <body>
         <ul class="btn__pager">
@@ -73,23 +73,23 @@ class TestLodestoneScraper(unittest.TestCase):
 
 
   def test_get_free_company_members_one_member_one_page(self):
-    members=['Kiryuin Satsuki']
+    members=[FCMember('id', 'Kiryuin Satsuki', 'Big Boss')]
     self.add_mock_response(status=200, members=members)
     results = self.scraper.get_free_company_members(FC_ID)
     self.assertListEqual(list(results), members)
 
 
   def test_get_free_company_members_two_members_one_page(self):
-    members=['Kiryuin Satsuki', 'Juhdu Khigbaa']
+    members=[FCMember('id', 'Kiryuin Satsuki', 'Big Boss'), FCMember('id2', 'Aia Merry', 'The Boss')]
     self.add_mock_response(status=200, members=members)
     results = self.scraper.get_free_company_members(FC_ID)
     self.assertListEqual(list(results), members)
 
 
   def test_get_free_company_members_many_members_three_pages(self):
-    page1_members = ['Kiryuin Satsuki', 'Juhdu Khigbaa']
-    page2_members = ['FC Member 3', 'FC Member 4']
-    page3_members = ['FC Member 5']
+    page1_members=[FCMember('id', 'Kiryuin Satsuki', 'Big Boss'), FCMember('id2', 'Aia Merry', 'The Boss')]
+    page2_members=[FCMember('id3', 'Juhdu Khigbaa', 'Made Member'), FCMember('id4', 'Boy Detective', 'Lieutenant')]
+    page3_members = [FCMember('id3', 'Cirina Qalli', 'Officer')]
 
     self.add_mock_response(status=200, members=page1_members, max_pages=3)
     self.add_mock_response(status=200, members=page2_members, page=2, max_pages=3)
