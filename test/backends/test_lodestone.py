@@ -69,22 +69,19 @@ class TestLodestoneScraper(unittest.TestCase):
 
   def test_get_free_company_members_no_members(self):
     self.add_mock_fc_members_response(status=200, members=[])
-    results = self.scraper.get_free_company_members(FC_ID)
-    self.assertListEqual(list(results), [])
+    self.assertListEqual(self.scraper.get_free_company_members(FC_ID), [])
 
 
   def test_get_free_company_members_one_member_one_page(self):
     members=[FCMember('id', 'Kiryuin Satsuki', 'Big Boss')]
     self.add_mock_fc_members_response(status=200, members=members)
-    results = self.scraper.get_free_company_members(FC_ID)
-    self.assertListEqual(list(results), members)
+    self.assertListEqual(self.scraper.get_free_company_members(FC_ID), members)
 
 
   def test_get_free_company_members_two_members_one_page(self):
     members=[FCMember('id', 'Kiryuin Satsuki', 'Big Boss'), FCMember('id2', 'Aia Merry', 'The Boss')]
     self.add_mock_fc_members_response(status=200, members=members)
-    results = self.scraper.get_free_company_members(FC_ID)
-    self.assertListEqual(list(results), members)
+    self.assertListEqual(self.scraper.get_free_company_members(FC_ID), members)
 
 
   def test_get_free_company_members_many_members_three_pages(self):
@@ -96,8 +93,7 @@ class TestLodestoneScraper(unittest.TestCase):
     self.add_mock_fc_members_response(status=200, members=page2_members, page=2, max_pages=3)
     self.add_mock_fc_members_response(status=200, members=page3_members, page=3, max_pages=3)
 
-    results = self.scraper.get_free_company_members(FC_ID)
-    self.assertListEqual(list(results), page1_members + page2_members + page3_members)
+    self.assertListEqual(self.scraper.get_free_company_members(FC_ID), page1_members + page2_members + page3_members)
 
 
   def test_get_free_company_members_error_states(self):
