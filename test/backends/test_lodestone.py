@@ -148,6 +148,29 @@ class TestLodestoneScraper(unittest.TestCase):
     self.assertEqual(self.scraper.get_grand_company_rankings(WORLD_NAME), rankings)
 
 
+  def test_get_grand_company_rankings_two_across_two_pages(self):
+    page1_rankings = [GrandCompanyRanking('id', 'Kiryuin Satsuki', 1, 22000000)]
+    page2_rankings = [GrandCompanyRanking('id2', 'Vespertine Celeano', 2, 10000000)]
+    self.add_mock_gc_rankings_response(200, page1_rankings, 1)
+    self.add_mock_gc_rankings_response(200, page2_rankings, 2)
+    self.add_mock_gc_rankings_response(200, [], 3)
+    self.add_mock_gc_rankings_response(200, [], 4)
+    self.add_mock_gc_rankings_response(200, [], 5)
+    self.assertEqual(self.scraper.get_grand_company_rankings(WORLD_NAME), page1_rankings + page2_rankings)
+
+
+  def test_get_grand_company_rankings_many_across_multiple_pages(self):
+    page1_rankings = [GrandCompanyRanking('id', 'Kiryuin Satsuki', 1, 22000000), GrandCompanyRanking('id2', 'Vespertine Celeano', 2, 10000000)]
+    page2_rankings = [GrandCompanyRanking('id', 'GC Ranking 3', 3, 100000), GrandCompanyRanking('id4', 'GC Ranking 4', 4, 50000)]
+    page3_rankings = [GrandCompanyRanking('id', 'GC Ranking 5', 5, 1000)]
+    self.add_mock_gc_rankings_response(200, page1_rankings, 1)
+    self.add_mock_gc_rankings_response(200, page2_rankings, 2)
+    self.add_mock_gc_rankings_response(200, page3_rankings, 3)
+    self.add_mock_gc_rankings_response(200, [], 4)
+    self.add_mock_gc_rankings_response(200, [], 5)
+    self.assertEqual(self.scraper.get_grand_company_rankings(WORLD_NAME), page1_rankings + page2_rankings + page3_rankings)
+
+
   def test_get_grand_company_rankings_error_states(self):
     for status_code in [400, 404, 429, 500]:
       self.add_mock_gc_rankings_response(status_code)
