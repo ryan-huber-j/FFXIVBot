@@ -17,10 +17,10 @@ class FCMember:
 
 @dataclass
 class GrandCompanyRanking:
-  id: str
-  name: str
+  character_id: str
+  character_name: str
   rank: int
-  company_seals: int
+  seals: int
 
 
 class LodestoneScraperException(Exception):
@@ -76,43 +76,52 @@ class LodestoneScraper:
       fc_members.append(FCMember(lodestone_id, member_name, member_rank))
 
     return fc_members
-  
-
-  def _fetch_grand_company_rankings_page(self, world: str, page_num: int = 1):
-    response = requests.get(
-      f"https://na.finalfantasyxiv.com/lodestone/ranking/gc/weekly?"
-      "page={page_num}&filter=1&worldname={world}"
-    )
-
-    if response.status_code == 404:
-      raise LodestoneScraperException(f'Could not find Grand Company rankings for {world}', response.status_code)
-    elif response.status_code == 429:
-      raise LodestoneScraperException(f'Unable to fetch Grand Company rankings due to Lodestone rate limiting')
-    elif response.status_code >= 400 and response.status_code < 500:
-      LodestoneScraperException(f'Could not find Grand Company rankings due to an unknown client error', response.status_code)
-    elif response.status_code >= 500:
-      raise LodestoneScraperException('The Lodestone appears to be down', response.status_code)
-    elif response.status_code != 200:
-      raise LodestoneScraperException(f'Could not find Grand Company rankings due to an unknown issue', response.status_code)
 
 
   def get_free_company_members(self, fc_id: str):
     response = self._get_fc_members_page(fc_id)
-    soup = BeautifulSoup(response.content, 'html.parser')
+    page = BeautifulSoup(response.content, 'html.parser')
 
-    page_number_tag = soup.find('li', class_='btn__pager__current')
+    page_number_tag = page.find('li', class_='btn__pager__current')
     match = _page_number_regex.fullmatch(page_number_tag.string)
     if match is None:
       raise LodestoneScraperException(f'Unable to parse page number from following: {page_number_tag.string}')
     num_pages = int(match.group(1))
 
-    members = self._scrape_members_from_page(soup)
+    members = self._scrape_members_from_page(page)
     for page_num in range(2, num_pages+1):
       response = self._get_fc_members_page(fc_id, page_num)
-      soup = BeautifulSoup(response.content, 'html.parser')
-      members += self._scrape_members_from_page(soup)
+      page = BeautifulSoup(response.content, 'html.parser')
+      members += self._scrape_members_from_page(page)
 
     return members
   
+  
   def get_grand_company_rankings(self, world: str):
-    pass
+    rankings = []
+
+    for page_num in range(1, 6):
+      response = requests.get(f'{self._base_url}/lodestone/ranking/gc/weekly?page={page_num}&worldname={world}')
+
+      if response.status_code == 404:
+        raise LodestoneScraperException(f'Could not find Grand Company rankings for {world}', response.status_code)
+      elif response.status_code == 429:
+        raise LodestoneScraperException(f'Unable to fetch Grand Company rankings due to Lodestone rate limiting')
+      elif response.status_code >= 400 and response.status_code < 500:
+        raise LodestoneScraperException(f'Could not find Grand Company rankings due to an unknown client error', response.status_code)
+      elif response.status_code >= 500:
+        raise LodestoneScraperException('The Lodestone appears to be down', response.status_code)
+      elif response.status_code != 200:
+        raise LodestoneScraperException(f'Could not find Grand Company rankings due to an unknown issue', response.status_code)
+
+      page = BeautifulSoup(response.content, 'html.parser')
+
+      ranking_table_row_tags = page.select('tbody tr')
+      for ranking_row_tag in ranking_table_row_tags:
+        id = str(ranking_row_tag['data-href']).split('/')[3]
+        name = str(ranking_row_tag.find('h4').contents[0]).strip()
+        ranking = int(str(ranking_row_tag.select('.ranking-character__number')[0].text).strip())
+        seals = int(str(ranking_row_tag.find('td', {'class': 'ranking-character__value'}).text).strip())
+        rankings.append(GrandCompanyRanking(id, name, ranking, seals))
+    
+    return rankings

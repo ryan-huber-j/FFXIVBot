@@ -2,11 +2,12 @@ import unittest
 import unittest.mock
 import requests
 
-from backends.lodestone import FCMember, LodestoneScraper, LodestoneScraperException
+from backends.lodestone import FCMember, GrandCompanyRanking, LodestoneScraper, LodestoneScraperException
 
 
 BASE_URL = 'https://some.lodestone.url.com'
 FC_ID = 'fc_id'
+WORLD_NAME = 'Siren'
 
 
 class FakeResponse:
@@ -41,7 +42,7 @@ class TestLodestoneScraper(unittest.TestCase):
     '''
 
 
-  def add_mock_response(self, status, members=None, page=None, max_pages=1):
+  def add_mock_fc_members_response(self, status, members=None, page=None, max_pages=1):
     if page is None:
       page = 1
       key = f'{BASE_URL}/lodestone/freecompany/{FC_ID}/member'
@@ -67,21 +68,21 @@ class TestLodestoneScraper(unittest.TestCase):
 
 
   def test_get_free_company_members_no_members(self):
-    self.add_mock_response(status=200, members=[])
+    self.add_mock_fc_members_response(status=200, members=[])
     results = self.scraper.get_free_company_members(FC_ID)
     self.assertListEqual(list(results), [])
 
 
   def test_get_free_company_members_one_member_one_page(self):
     members=[FCMember('id', 'Kiryuin Satsuki', 'Big Boss')]
-    self.add_mock_response(status=200, members=members)
+    self.add_mock_fc_members_response(status=200, members=members)
     results = self.scraper.get_free_company_members(FC_ID)
     self.assertListEqual(list(results), members)
 
 
   def test_get_free_company_members_two_members_one_page(self):
     members=[FCMember('id', 'Kiryuin Satsuki', 'Big Boss'), FCMember('id2', 'Aia Merry', 'The Boss')]
-    self.add_mock_response(status=200, members=members)
+    self.add_mock_fc_members_response(status=200, members=members)
     results = self.scraper.get_free_company_members(FC_ID)
     self.assertListEqual(list(results), members)
 
@@ -91,14 +92,67 @@ class TestLodestoneScraper(unittest.TestCase):
     page2_members=[FCMember('id3', 'Juhdu Khigbaa', 'Made Member'), FCMember('id4', 'Boy Detective', 'Lieutenant')]
     page3_members = [FCMember('id3', 'Cirina Qalli', 'Officer')]
 
-    self.add_mock_response(status=200, members=page1_members, max_pages=3)
-    self.add_mock_response(status=200, members=page2_members, page=2, max_pages=3)
-    self.add_mock_response(status=200, members=page3_members, page=3, max_pages=3)
+    self.add_mock_fc_members_response(status=200, members=page1_members, max_pages=3)
+    self.add_mock_fc_members_response(status=200, members=page2_members, page=2, max_pages=3)
+    self.add_mock_fc_members_response(status=200, members=page3_members, page=3, max_pages=3)
 
     results = self.scraper.get_free_company_members(FC_ID)
     self.assertListEqual(list(results), page1_members + page2_members + page3_members)
 
+
   def test_get_free_company_members_error_states(self):
     for status_code in [400, 404, 429, 500]:
-      self.add_mock_response(status_code)
+      self.add_mock_fc_members_response(status_code)
       self.assertRaises(LodestoneScraperException, lambda: self.scraper.get_free_company_members(FC_ID))
+
+
+  def fake_gc_ranking_row(self, ranking: GrandCompanyRanking):
+    return f'''
+      <tr data-href="/lodestone/character/{ranking.character_id}/" class="clickable">
+        <td class="ranking-character__number											"> {ranking.rank} </td>
+        <td class="ranking-character__face"> <img
+            src="https://img2.finalfantasyxiv.com/f/ba64ef52323ad0c23edaa3bafc9f4e82_58a84e851e55175d22158ca97af58a1ffc0_96x96.jpg?1702063037"
+            width="50" height="50" alt=""> </td>
+        <td class="ranking-character__info">
+          <h4>{ranking.character_name}</h4>
+          <p><i class="xiv-lds xiv-lds-home-world js__tooltip" data-tooltip="Home World"></i>Siren [Aether]</p>
+        </td>
+        <td class="ranking-character__gcrank"> <img
+            src="https://lds-img.finalfantasyxiv.com/h/V/tKlwWMAtNLAumnqjI8iNPnMKHc.png" width="32" height="32"
+            alt="Immortal Flames/Flame Captain" class="js__tooltip" data-tooltip="Immortal Flames/Flame Captain"> </td>
+        <td class="ranking-character__value"> {ranking.seals} </td>
+      </tr>
+    '''
+
+
+  def add_mock_gc_rankings_response(self, status_code: int, rankings: list[GrandCompanyRanking] = None, page_num: int = 1):
+    if rankings is None:
+      body = ''
+    else:
+      ranking_rows = '\n'.join(self.fake_gc_ranking_row(ranking) for ranking in rankings)
+      body = f'''
+        <table>
+          <tbody>
+            {ranking_rows}
+          </tbody>
+        </table>
+      '''
+
+    key = f'{BASE_URL}/lodestone/ranking/gc/weekly?page={page_num}&worldname={WORLD_NAME}'
+    self.mock_responses[key] = FakeResponse(status_code, body)
+
+
+  def test_get_grand_company_rankings_single(self):
+    rankings = [GrandCompanyRanking('id', 'Kiryuin Satsuki', 1, 22000000)]
+    self.add_mock_gc_rankings_response(200, rankings, 1)
+    self.add_mock_gc_rankings_response(200, [], 2)
+    self.add_mock_gc_rankings_response(200, [], 3)
+    self.add_mock_gc_rankings_response(200, [], 4)
+    self.add_mock_gc_rankings_response(200, [], 5)
+    self.assertEqual(self.scraper.get_grand_company_rankings(WORLD_NAME), rankings)
+
+
+  def test_get_grand_company_rankings_error_states(self):
+    for status_code in [400, 404, 429, 500]:
+      self.add_mock_gc_rankings_response(status_code)
+      self.assertRaises(LodestoneScraperException, lambda: self.scraper.get_grand_company_rankings(WORLD_NAME))
