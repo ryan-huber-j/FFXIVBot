@@ -78,7 +78,7 @@ class LodestoneScraper:
     return fc_members
 
 
-  def get_free_company_members(self, fc_id: str):
+  def get_free_company_members(self, fc_id: str) -> list[FCMember]:
     response = self._get_fc_members_page(fc_id)
     page = BeautifulSoup(response.content, 'html.parser')
 
@@ -97,7 +97,7 @@ class LodestoneScraper:
     return members
   
   
-  def get_grand_company_rankings(self, world: str):
+  def get_grand_company_rankings(self, world: str) -> list[GrandCompanyRanking]:
     rankings = []
 
     for page_num in range(1, 6):

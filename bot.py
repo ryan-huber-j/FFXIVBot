@@ -114,8 +114,8 @@ def mention(user_id):
 
 def mark_winner(results):
     participants = dict((id, player) for (id, player) in results.items() if player.designation == "p")
-    winner_id = max(participants, key=lambda id: participants[id].score, default=-1)
-    if winner_id >= 0:
+    winner_id = max(participants, key=lambda id: participants[id].score, default=None)
+    if winner_id is not None:
         winner_info = results[winner_id]
         marked_winner = Scorer(winner_id, winner_info.name, winner_info.score, winner_info.ranking, winner_info.designation, True)
         results[winner_id] = marked_winner
