@@ -61,19 +61,17 @@ class LodestoneScraper:
 
     member_list_items_tags = page.find_all('li', class_='entry')
     for member_tag in member_list_items_tags:
-      character_link_tag = member_tag.find('a', class_='entry__bg')
-      character_link = character_link_tag['href']
+      character_link = member_tag.find('a', class_='entry__bg')['href']
       lodestone_id_match = _character_link_regex.fullmatch(character_link)
       if lodestone_id_match is None:
         raise LodestoneScraperException(f'Unable to parse character lodestone ID from following: {character_link}')
       lodestone_id = lodestone_id_match.group(1)
 
-      member_name = member_tag.find('p', class_='entry__name').string
+      name = member_tag.find('p', class_='entry__name').string
+      fc_rank = member_tag.find('ul', class_='entry__freecompany__info') \
+                          .find('li').find('span').string
 
-      member_fc_info_tag = member_tag.find('ul', class_='entry__freecompany__info')
-      member_rank = member_fc_info_tag.find('li').find('span').string
-
-      fc_members.append(FCMember(lodestone_id, member_name, member_rank))
+      fc_members.append(FCMember(lodestone_id, name, fc_rank))
 
     return fc_members
 
