@@ -6,6 +6,7 @@ import requests
 
 _page_number_regex = re.compile('Page \d of (\d)')
 _character_link_regex = re.compile('/lodestone/character/(.+)/')
+_fc_link_regex = re.compile('/lodestone/freecompany/(.+)/')
 
 
 @dataclass
@@ -21,6 +22,11 @@ class GrandCompanyRanking:
   character_name: str
   rank: int
   seals: int
+
+@dataclass
+class FreeCompany:
+  id: str
+  name: str
 
 
 class LodestoneScraperException(Exception):
@@ -125,3 +131,18 @@ class LodestoneScraper:
         rankings.append(GrandCompanyRanking(id, name, ranking, seals))
     
     return rankings
+  
+  def search_free_companies(self, world: str) -> list[FreeCompany]:
+    response = requests.get(f'{self._base_url}/lodestone/freecompany?worldname={world}')
+
+    page = BeautifulSoup(response.content, 'html.parser')
+    fc_entry_tags = page.find_all('div', class_='entry')
+    free_companies = []
+    for fc_entry in fc_entry_tags:
+      fc_link_tag = fc_entry.find('a', class_='entry__block')
+      lodestone_id_match = _fc_link_regex.fullmatch(fc_link_tag['href'])
+      lodestone_id = lodestone_id_match.group(1)
+      free_company_name = fc_entry.find('p', class_='entry__name').string
+      free_companies.append(FreeCompany(lodestone_id, free_company_name))
+
+    return free_companies

@@ -2,7 +2,7 @@ import unittest
 import unittest.mock
 import requests
 
-from backends.lodestone import FCMember, GrandCompanyRanking, LodestoneScraper, LodestoneScraperException
+from backends.lodestone import *
 
 
 BASE_URL = 'https://some.lodestone.url.com'
@@ -175,3 +175,53 @@ class TestLodestoneScraper(unittest.TestCase):
     for status_code in [400, 404, 429, 500]:
       self.add_mock_gc_rankings_response(status_code)
       self.assertRaises(LodestoneScraperException, lambda: self.scraper.get_grand_company_rankings(WORLD_NAME))
+
+
+  def add_mock_free_companies_response(self, status_code: int, fcs: list[FreeCompany] = []):
+    key = f'{BASE_URL}/lodestone/freecompany?worldname={WORLD_NAME}'
+
+    fc_html_elems = []
+    for free_company in fcs:
+      html = f'''
+        <div class="entry">
+          <a href="/lodestone/freecompany/{free_company.id}/" class="entry__block">
+            <div class="entry__freecompany__inner">
+              <div class="entry__freecompany__box">
+                <p class="entry__world">Maelstrom</p>
+                <p class="entry__name">{free_company.name}</p>
+                <p class="entry__world"><i class="xiv-lds xiv-lds-home-world js__tooltip" data-tooltip="Home World"></i>{WORLD_NAME}
+                  [Aether]</p>
+              </div>
+            </div>
+            <ul class="entry__freecompany__fc-data clearix">
+              <li class="entry__freecompany__fc-member">35</li>
+              <li class="entry__freecompany__fc-housing">Estate Built</li>
+              <li class="entry__freecompany__fc-day"><span id="datetime-f106dabe182">09/20/2021</span>
+                <script>document.getElementById('datetime-f106dabe182').innerHTML = ldst_strftime(1632175472, 'YMD');</script>
+              </li>
+              <li class="entry__freecompany__fc-active">Active: Always</li>
+              <li class="entry__freecompany__fc-active">Recruitment: Open</li>
+            </ul>
+          </a>
+        </div>
+      '''
+      fc_html_elems.append(html)
+    
+    body = f'''
+      <div>
+        {''.join(fc_html_elems)}
+      </div>
+    '''
+
+    self.mock_responses[key] = FakeResponse(status_code, body)
+
+
+  def test_search_free_companies_empty(self):
+    self.add_mock_free_companies_response(200)
+    self.assertEqual(self.scraper.search_free_companies(WORLD_NAME), [])
+
+  
+  def test_search_free_companies_single(self):
+    single_fc = [FreeCompany('1234', 'Free Company 1')]
+    self.add_mock_free_companies_response(200, single_fc)
+    self.assertEqual(self.scraper.search_free_companies(WORLD_NAME), single_fc)
