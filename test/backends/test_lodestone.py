@@ -225,3 +225,9 @@ class TestLodestoneScraper(unittest.TestCase):
     single_fc = [FreeCompany('1234', 'Free Company 1')]
     self.add_mock_free_companies_response(200, single_fc)
     self.assertEqual(self.scraper.search_free_companies(WORLD_NAME), single_fc)
+
+
+  def test_get_grand_company_rankings_error_states(self):
+    for status_code in [400, 404, 429, 500]:
+      self.add_mock_free_companies_response(status_code)
+      self.assertRaises(LodestoneScraperException, lambda: self.scraper.search_free_companies(WORLD_NAME))

@@ -131,9 +131,21 @@ class LodestoneScraper:
         rankings.append(GrandCompanyRanking(id, name, ranking, seals))
     
     return rankings
-  
+
+
   def search_free_companies(self, world: str) -> list[FreeCompany]:
     response = requests.get(f'{self._base_url}/lodestone/freecompany?worldname={world}')
+
+    if response.status_code == 404:
+        raise LodestoneScraperException(f'Could not find Free Companies for {world}', response.status_code)
+    elif response.status_code == 429:
+      raise LodestoneScraperException(f'Unable to fetch Free Companies due to Lodestone rate limiting')
+    elif response.status_code >= 400 and response.status_code < 500:
+      raise LodestoneScraperException(f'Could not find Free Companies due to an unknown client error', response.status_code)
+    elif response.status_code >= 500:
+      raise LodestoneScraperException('The Lodestone appears to be down', response.status_code)
+    elif response.status_code != 200:
+      raise LodestoneScraperException(f'Could not find Free Companies due to an unknown issue', response.status_code)
 
     page = BeautifulSoup(response.content, 'html.parser')
     fc_entry_tags = page.find_all('div', class_='entry')
