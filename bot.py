@@ -101,9 +101,9 @@ async def get_results(ctx):
             return
         
         message_parts.append(f"\nFor winning, {mention(winner_discord_id)} gets to choose from:\n"
-                               "Any Mog Station Items equaling $14.00 USD (before tax; some Square Enix implemented limitations apply).\n"
+                               "Any Mog Station Items equaling $10.00 USD (before tax; some Square Enix implemented limitations apply).\n"
                                "or\n"
-                               "$14.00 Amazon Gift Card")
+                               "$10.00 Amazon Gift Card")
 
     await ctx.send("\n".join(message_parts))
 
