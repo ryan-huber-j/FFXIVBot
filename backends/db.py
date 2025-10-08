@@ -49,4 +49,3 @@ class SqlLiteClient:
         )
         row = self.cursor.fetchone()
         return Contract(*row) if row else None
-        
