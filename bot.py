@@ -7,7 +7,7 @@ from discord import app_commands
 from bs4 import BeautifulSoup
 from typing import NamedTuple
 
-from backends.lodestone import LodestoneScraper
+from lodestone import LodestoneScraper
 from dotenv import load_dotenv
 
 

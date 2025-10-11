@@ -1,6 +1,6 @@
 import unittest
 
-from backends.db import *
+from db import *
 
 class TestDatabaseBackend(unittest.TestCase):
     def setUp(self):
