@@ -1,14 +1,15 @@
-import string
+from dataclasses import dataclass
 import os
-
-import discord
-import requests
-from discord import app_commands
-from bs4 import BeautifulSoup
+import string
 from typing import NamedTuple
 
-from lodestone import LodestoneScraper
+from bs4 import BeautifulSoup
+import discord
+from discord import app_commands
 from dotenv import load_dotenv
+import requests
+
+from lodestone import LodestoneScraper
 
 
 DUPLICATION_EXPLANATION = " *Note: Defaulted to highest rank listed and combined score between two ranks earned*"
@@ -185,6 +186,13 @@ async def getResultsOnPage(results, x, fcm, participants, coaches):
             else:
                 results[player_id] = Scorer(player_id, name, score, ranking, designation, win)
 
+
+@dataclass
+class Participant():
+    id: str
+    name: str
+    is_coach: bool = False
+    has_participated: bool = False
 
 class Scorer(NamedTuple):
     id: int
