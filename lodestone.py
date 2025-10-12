@@ -1,8 +1,8 @@
-from bs4 import BeautifulSoup
 from dataclasses import dataclass
 import re
-import requests
 
+from bs4 import BeautifulSoup
+import requests
 
 _page_number_regex = re.compile('Page \d of (\d)')
 _character_link_regex = re.compile('/lodestone/character/(.+)/')

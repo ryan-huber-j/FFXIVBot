@@ -11,7 +11,6 @@ import requests
 
 from lodestone import LodestoneScraper
 
-
 DUPLICATION_EXPLANATION = " *Note: Defaulted to highest rank listed and combined score between two ranks earned*"
 WINNER_MESSAGE = " WINNER"
 

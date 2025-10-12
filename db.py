@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 import sqlite3
 
-
 DB_FILE = "data.db"
 
 SCHEMA = """

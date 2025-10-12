@@ -1,8 +1,8 @@
 import unittest
+
 import requests
 
 from lodestone import *
-
 
 BASE_URL = 'https://some.lodestone.url.com'
 FC_ID = 'fc_id'

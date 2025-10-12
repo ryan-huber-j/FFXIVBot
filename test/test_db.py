@@ -2,6 +2,7 @@ import unittest
 
 from db import *
 
+
 class TestDatabaseBackend(unittest.TestCase):
     def setUp(self):
         self.db_client = SqlLiteClient(":memory:")
