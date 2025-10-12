@@ -187,6 +187,14 @@ async def getResultsOnPage(results, x, fcm, participants, coaches):
 
 
 @dataclass
+class Contract:
+    discord_id: str
+    first_name: str
+    last_name: str
+    amount: int
+
+
+@dataclass
 class Participant():
     id: str
     name: str

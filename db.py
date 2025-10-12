@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 import sqlite3
 
+from bot import Contract
+
 DB_FILE = "data.db"
 
 SCHEMA = """
@@ -13,12 +15,6 @@ CREATE TABLE IF NOT EXISTS contracts (
 );
 """
 
-@dataclass
-class Contract:
-    discord_id: str
-    first_name: str
-    last_name: str
-    amount: int
 
 class SqlLiteClient:
     def __init__(self, source: str=DB_FILE):
