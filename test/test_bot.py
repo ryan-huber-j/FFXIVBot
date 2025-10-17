@@ -1,9 +1,44 @@
+from dataclasses import dataclass
 import unittest
 
-from bot import Scorer, mark_winner
+import discord
+
+from bot import Scorer, get_results_2, mark_winner
 
 
-class TestMainBotFunctions(unittest.TestCase):
+class FakeInteraction:
+    def __init__(self):
+        self.response = FakeResponse()
+        self.followup = FakeFollowup()
+        self.guild = FakeGuild()
+
+class FakeResponse():
+    deferred: bool = False
+    ephemeral: bool = False
+    thinking: bool = False
+    async def defer(self, ephemeral: bool=True, thinking: bool=True):
+        self.deferred = True
+        self.ephemeral = ephemeral
+        self.thinking = thinking
+
+class FakeFollowup:
+    messages: list = []
+    async def send(self, message: str):
+        self.messages.append(message)
+
+@dataclass
+class FakeChannel:
+    name: str
+
+class FakeGuild:
+    channels: list[FakeChannel] = []
+
+
+class TestMainBotFunctions(unittest.IsolatedAsyncioTestCase):
+    @classmethod
+    def setUpClass(cls):
+        discord.Interaction = FakeInteraction
+
     def test_mark_winner_empty_map(self):
         scores = {}
         winner = mark_winner(scores)
@@ -49,3 +84,18 @@ class TestMainBotFunctions(unittest.TestCase):
         winner = mark_winner(scores)
         self.assertEqual(winner.id, 234)
         self.assertEqual(winner.winner, True)
+
+
+    async def test_get_results_2(self):
+        # create a mock interaction object
+        interaction = FakeInteraction()
+        await get_results_2(interaction)
+        self.assertTrue(interaction.response.deferred)
+        self.assertTrue(interaction.response.ephemeral)
+        self.assertTrue(interaction.response.thinking)
+
+    async def test_get_results_2_should_error_if_no_channel_available(self):
+        interaction = FakeInteraction()
+        await get_results_2(interaction)
+        message_parts = interaction.followup.messages
+        self.assertIn("no channel named *professionals-signups* exists", message_parts[0])

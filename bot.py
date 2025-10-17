@@ -64,7 +64,7 @@ def get_fc_member_ids() -> list[str]:
     description="Retrieves all FC members' weekly GC ranking results",
     guild=guild
 )
-async def get_results(interaction: discord.Interaction) -> None:
+async def get_results(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True, thinking=True)
     channel = discord.utils.get(interaction.guild.channels, name='professionals-signups')
     if channel is None:
@@ -136,6 +136,15 @@ async def get_results(interaction: discord.Interaction) -> None:
                                "$10.00 Amazon Gift Card")
 
     await interaction.followup.send("\n".join(message_parts))
+
+
+async def get_results_2(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True, thinking=True)
+    signup_channel = discord.utils.get(interaction.guild.channels, name='professionals-signups')
+
+    if signup_channel is None:
+        await interaction.followup.send("no channel named *professionals-signups* exists")
+        return
 
 
 def mention(user_id):
