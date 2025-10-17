@@ -1,3 +1,20 @@
+[project]
+name = "professionals-bot"
+version = "1.0.0"
+dependencies = [
+    "requests",
+    "python-dotenv",
+    "discord.py",
+    "idna",
+    "beautifulsoup4",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "responses",
+]
+
 [tool.isort]
 profile = "black"
 line_length = 88
