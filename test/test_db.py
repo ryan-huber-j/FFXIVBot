@@ -46,6 +46,19 @@ class TestParticipants(unittest.TestCase):
         except Exception as e:
             self.fail(f"Deletion of nonexistent participant raised an exception: {e}")
 
+    def test_should_delete_contract(self):
+        contract = Contract(discord_id=123456789, amount=100)
+        self.db_client.insert_contract(contract)
+        self.db_client.delete_contract(123456789)
+        result = self.db_client.get_contract(123456789)
+        self.assertIsNone(result)
+
+    def test_should_handle_deletion_of_nonexistent_contract_gracefully(self):
+        try:
+            self.db_client.delete_contract(888888888)
+        except Exception as e:
+            self.fail(f"Deletion of nonexistent contract raised an exception: {e}")
+
 
 class TestContracts(unittest.TestCase):
     def setUp(self):

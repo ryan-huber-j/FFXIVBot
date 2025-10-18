@@ -163,3 +163,10 @@ class TestCreateContract(unittest.IsolatedAsyncioTestCase):
             await create_contract(input)
         errors = ve.exception.errors
         self.assertEqual(len(errors), 2)
+
+    async def test_should_end_contract(self):
+        contract = default_contract()
+        await create_contract(self.default_input())
+        await end_contract(contract.discord_id)
+        stored_contract = self.db.get_contract(contract.discord_id)
+        self.assertIsNone(stored_contract)

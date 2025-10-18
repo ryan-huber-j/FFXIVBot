@@ -96,7 +96,6 @@ async def create_contract(input: ContractInput):
 
 
 async def end_contract(discord_id: int):
-    pass
-    # if len(errors := validate_discord_id(discord_id)) > 0:
-    #     raise ValidationException(errors)
-    # _db.delete_contract_by_discord_id(discord_id)
+    if len(errors := validate_discord_id(discord_id)) > 0:
+        raise ValidationException(errors)
+    _db.delete_contract(discord_id)

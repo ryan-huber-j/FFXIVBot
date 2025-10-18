@@ -88,3 +88,13 @@ class SqlLiteClient:
         )
         row = self.cursor.fetchone()
         return Contract(*row) if row else None
+
+    def delete_contract(self, discord_id: int) -> None:
+        self.cursor.execute(
+            """
+            DELETE FROM contracts
+            WHERE discord_id = ?
+            """,
+            (discord_id,),
+        )
+        self.connection.commit()
