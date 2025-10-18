@@ -22,3 +22,10 @@ class Contract:
     first_name: str
     last_name: str
     amount: int
+
+
+@dataclass
+class Participant:
+    discord_id: int
+    first_name: str
+    last_name: str
