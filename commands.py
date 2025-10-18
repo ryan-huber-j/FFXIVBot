@@ -47,7 +47,7 @@ def validate_contract(
     return errors
 
 
-def participate(discord_id: int, first_name: str, last_name: str):
+async def participate_as_player(discord_id: int, first_name: str, last_name: str):
     participant = Participant(
         discord_id=discord_id,
         first_name=first_name,
@@ -59,7 +59,7 @@ def participate(discord_id: int, first_name: str, last_name: str):
     _db.insert_participant(participant)
 
 
-def participate_as_coach(discord_id: int, first_name: str, last_name: str):
+async def participate_as_coach(discord_id: int, first_name: str, last_name: str):
     participant = Participant(
         discord_id=discord_id,
         first_name=first_name,
@@ -69,6 +69,10 @@ def participate_as_coach(discord_id: int, first_name: str, last_name: str):
     if len(errors := validate_participant(participant)) > 0:
         raise ValidationException(errors)
     _db.insert_participant(participant)
+
+
+async def end_participation(discord_id: int):
+    pass
 
 
 async def create_contract(input: ContractInput):
@@ -87,3 +91,10 @@ async def create_contract(input: ContractInput):
         raise ValidationException(validation_errors)
 
     _db.insert_contract(contract)
+
+
+async def end_contract(discord_id: int):
+    pass
+    # if len(errors := validate_discord_id(discord_id)) > 0:
+    #     raise ValidationException(errors)
+    # _db.delete_contract_by_discord_id(discord_id)

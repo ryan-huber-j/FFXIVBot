@@ -31,6 +31,21 @@ class TestParticipants(unittest.TestCase):
         result = self.db_client.get_participant_by_discord_id("nonexistent_id")
         self.assertIsNone(result)
 
+    def test_should_delete_participant(self):
+        participant = Participant(
+            discord_id=555555555, first_name="Test", last_name="User", is_coach=False
+        )
+        self.db_client.insert_participant(participant)
+        self.db_client.delete_participant_by_discord_id(555555555)
+        result = self.db_client.get_participant_by_discord_id(555555555)
+        self.assertIsNone(result)
+
+    def test_should_handle_deletion_of_nonexistent_participant_gracefully(self):
+        try:
+            self.db_client.delete_participant_by_discord_id(999999999)
+        except Exception as e:
+            self.fail(f"Deletion of nonexistent participant raised an exception: {e}")
+
 
 class TestContracts(unittest.TestCase):
     def setUp(self):

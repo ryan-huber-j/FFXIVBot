@@ -3,7 +3,6 @@ import sqlite3
 from domain import Contract, Participant
 
 DB_FILE = "data.db"
-
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS participants (
     discord_id INTEGER NOT NULL,
@@ -54,6 +53,16 @@ class SqlLiteClient:
         )
         row = self.cursor.fetchone()
         return Participant(*row) if row else None
+
+    def delete_participant_by_discord_id(self, discord_id: int) -> None:
+        self.cursor.execute(
+            """
+            DELETE FROM participants
+            WHERE discord_id = ?
+            """,
+            (discord_id,),
+        )
+        self.connection.commit()
 
     def insert_contract(self, contract: Contract) -> None:
         self.cursor.execute(

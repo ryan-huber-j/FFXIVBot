@@ -91,32 +91,34 @@ class TestValidateContract(unittest.TestCase):
                 )
 
 
-class TestParticipation(unittest.TestCase):
+class TestParticipation(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.db = SqlLiteClient(":memory:")
         initialize_db(self.db)
 
-    def test_should_store_valid_participant_as_non_coach(self):
+    async def test_should_store_valid_participant_as_non_coach(self):
         participant = default_participant()
-        participate(participant.discord_id, participant.first_name, participant.last_name)
+        await participate_as_player(
+            participant.discord_id, participant.first_name, participant.last_name
+        )
         stored_participant = self.db.get_participant_by_discord_id(participant.discord_id)
         self.assertEqual(stored_participant, participant)
 
-    def test_should_store_valid_coach(self):
+    async def test_should_store_valid_coach(self):
         coach = default_participant(is_coach=True)
-        participate_as_coach(coach.discord_id, coach.first_name, coach.last_name)
+        await participate_as_coach(coach.discord_id, coach.first_name, coach.last_name)
         stored_participant = self.db.get_participant_by_discord_id(coach.discord_id)
         self.assertEqual(stored_participant, coach)
 
-    def test_invalid_participant(self):
+    async def test_invalid_participant(self):
         with self.assertRaises(ValidationException) as ve:
-            participate("not an int", "Juhdu 123", "Kh igs09j3kE$$##baa")
+            await participate_as_player("not an int", "Juhdu 123", "Kh igs09j3kE$$##baa")
         errors = ve.exception.errors
         self.assertEqual(len(errors), 3)
 
-    def test_invalid_coach(self):
+    async def test_invalid_coach(self):
         with self.assertRaises(ValidationException) as ve:
-            participate_as_coach("not an int", "", "Khigbaa123")
+            await participate_as_coach("not an int", "", "Khigbaa123")
         errors = ve.exception.errors
         self.assertEqual(len(errors), 3)
 
