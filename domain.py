@@ -1,9 +1,7 @@
-from dataclasses import dataclass
 from typing import NamedTuple
 
 
-@dataclass
-class ValidationError:
+class ValidationError(NamedTuple):
     field: str
     message: str
 
@@ -15,14 +13,13 @@ class ValidationException(Exception):
             + ", ".join([f"{e.field}: {e.message}" for e in errors])
         )
 
-@dataclass
-class Participant:
+class Participant(NamedTuple):
     discord_id: int
     first_name: str
     last_name: str
     is_coach: bool
-@dataclass
-class Contract:
+
+class Contract(NamedTuple):
     discord_id: int
     amount: int
 

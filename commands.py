@@ -1,5 +1,3 @@
-from attr import dataclass
-
 from db import SqlLiteClient
 from domain import Contract, ContractInput, Participant, ValidationError, ValidationException
 

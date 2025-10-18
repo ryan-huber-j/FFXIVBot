@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 import os
 import string
 from typing import NamedTuple

@@ -1,5 +1,5 @@
-from dataclasses import dataclass
 import re
+from typing_extensions import NamedTuple
 
 from bs4 import BeautifulSoup
 import requests
@@ -9,23 +9,20 @@ _character_link_regex = re.compile("/lodestone/character/(.+)/")
 _fc_link_regex = re.compile("/lodestone/freecompany/(.+)/")
 
 
-@dataclass
-class FCMember:
+class FCMember(NamedTuple):
     id: str
     name: str
     rank: str
 
 
-@dataclass
-class GrandCompanyRanking:
+class GrandCompanyRanking(NamedTuple):
     character_id: str
     character_name: str
     rank: int
     seals: int
 
 
-@dataclass
-class FreeCompany:
+class FreeCompany(NamedTuple):
     id: str
     name: str
 
