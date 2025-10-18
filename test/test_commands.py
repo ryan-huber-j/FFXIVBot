@@ -2,9 +2,11 @@ import unittest
 
 from commands import *
 
+contract_values = [300000, 420000, 500000, 800000, 1000000]
+
 
 def default_contract(
-    discord_id=123456789012345678, first_name="Juhdu", last_name="Khigbaa", amount=5000
+    discord_id=123456789012345678, first_name="Juhdu", last_name="Khigbaa", amount=500000
 ) -> Contract:
     return Contract(
         discord_id=discord_id, first_name=first_name, last_name=last_name, amount=amount
@@ -13,7 +15,7 @@ def default_contract(
 
 class TestValidateContractInput(unittest.TestCase):
     def test_valid_input(self):
-        errors = validate_contract(default_contract())
+        errors = validate_contract(default_contract(), contract_values)
         self.assertEqual(len(errors), 0)
 
     def assert_error(self, errors, field, message):
@@ -25,14 +27,20 @@ class TestValidateContractInput(unittest.TestCase):
         tests = [0, -1, -100]
         for test in tests:
             with self.subTest(amount=test):
-                errors = validate_contract(default_contract(amount=test))
-                self.assert_error(errors, "amount", "Amount must be a positive integer.")
+                errors = validate_contract(default_contract(amount=test), contract_values)
+                self.assert_error(
+                    errors,
+                    "amount",
+                    "Amount must be one of: 300000, 420000, 500000, 800000, 1000000.",
+                )
 
     def test_invalid_first_name(self):
         tests = ["", "Juhdu with Spaces", "Juhdu-Khigbaa", " ", "/4iieh)OEWP\\"]
         for test in tests:
             with self.subTest(first_name=test):
-                errors = validate_contract(default_contract(first_name=test))
+                errors = validate_contract(
+                    default_contract(first_name=test), contract_values
+                )
                 self.assert_error(
                     errors, "first_name", "First name must be non-empty and alphabetic."
                 )
@@ -41,7 +49,9 @@ class TestValidateContractInput(unittest.TestCase):
         tests = ["", "Khigbaa with Spaces", "Khigbaa-Khigbaa", " ", "/4iieh)OEWP\\"]
         for test in tests:
             with self.subTest(last_name=test):
-                errors = validate_contract(default_contract(last_name=test))
+                errors = validate_contract(
+                    default_contract(last_name=test), contract_values
+                )
                 self.assert_error(
                     errors, "last_name", "Last name must be non-empty and alphabetic."
                 )
@@ -54,16 +64,16 @@ class TestCreateContract(unittest.IsolatedAsyncioTestCase):
 
     async def test_valid_contract_creation(self):
         contract = default_contract()
-        await create_contract(contract)
+        await create_contract(contract, contract_values)
         stored_contract = self.db.get_contract_by_discord_id(123456789012345678)
         self.assertEqual(stored_contract, contract)
 
     async def test_invalid_contract_raises_exception(self):
         contract = default_contract(
-            first_name="Juhdu 123", last_name="Khigba  a", amount=-5000
+            first_name="Juhdu 123", last_name="Khigba  a", amount=-500000
         )
         with self.assertRaises(ValidationException) as ve:
-            await create_contract(contract)
+            await create_contract(contract, contract_values)
         errors = ve.exception.errors
         self.assertEqual(
             errors,
@@ -74,6 +84,9 @@ class TestCreateContract(unittest.IsolatedAsyncioTestCase):
                 ValidationError(
                     "last_name", "Last name must be non-empty and alphabetic."
                 ),
-                ValidationError("amount", "Amount must be a positive integer."),
+                ValidationError(
+                    "amount",
+                    "Amount must be one of: 300000, 420000, 500000, 800000, 1000000.",
+                ),
             ],
         )

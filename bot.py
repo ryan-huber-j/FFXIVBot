@@ -60,7 +60,8 @@ async def create_contract(
 
     await create_contract(contract)
     await interaction.response.send_message(
-        f"Contract created for {character_first_name} {character_last_name} to earn {amount} seals this week!"
+        f"Contract created for {character_first_name} {character_last_name}"
+        "to earn {amount} seals this week!"
     )
 
 
