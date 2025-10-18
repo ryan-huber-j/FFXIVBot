@@ -12,23 +12,29 @@ class FakeInteraction:
         self.followup = FakeFollowup()
         self.guild = FakeGuild()
 
-class FakeResponse():
+
+class FakeResponse:
     deferred: bool = False
     ephemeral: bool = False
     thinking: bool = False
-    async def defer(self, ephemeral: bool=True, thinking: bool=True):
+
+    async def defer(self, ephemeral: bool = True, thinking: bool = True):
         self.deferred = True
         self.ephemeral = ephemeral
         self.thinking = thinking
 
+
 class FakeFollowup:
     messages: list = []
+
     async def send(self, message: str):
         self.messages.append(message)
+
 
 @dataclass
 class FakeChannel:
     name: str
+
 
 class FakeGuild:
     channels: list[FakeChannel] = []
@@ -40,15 +46,11 @@ class TestMainBotFunctions(unittest.TestCase):
         winner = mark_winner(scores)
         self.assertIsNone(winner)
 
-
     def test_mark_winner_single(self):
-        scores = {
-            1: Scorer(1, "Player 1", 1, 12, "p", False)
-        }
+        scores = {1: Scorer(1, "Player 1", 1, 12, "p", False)}
         winner = mark_winner(scores)
         self.assertEqual(winner.id, 1)
         self.assertEqual(winner.winner, True)
-
 
     def test_mark_winner_all_coaches(self):
         scores = {
@@ -57,7 +59,6 @@ class TestMainBotFunctions(unittest.TestCase):
         }
         winner = mark_winner(scores)
         self.assertIsNone(winner)
-
 
     def test_mark_winner_one_participant_and_coaches(self):
         scores = {
@@ -68,7 +69,6 @@ class TestMainBotFunctions(unittest.TestCase):
         winner = mark_winner(scores)
         self.assertEqual(winner.id, 123)
         self.assertEqual(winner.winner, True)
-
 
     def test_mark_winner_multiple_participants_and_coaches(self):
         scores = {

@@ -4,16 +4,10 @@ from commands import *
 
 
 def default_contract(
-        discord_id=123456789012345678, 
-        first_name='Juhdu', 
-        last_name='Khigbaa', 
-        amount=5000
+    discord_id=123456789012345678, first_name="Juhdu", last_name="Khigbaa", amount=5000
 ) -> Contract:
     return Contract(
-        discord_id=discord_id,
-        first_name=first_name,
-        last_name=last_name,
-        amount=amount
+        discord_id=discord_id, first_name=first_name, last_name=last_name, amount=amount
     )
 
 
@@ -22,42 +16,43 @@ class TestValidateContractInput(unittest.TestCase):
         errors = validate_contract(default_contract())
         self.assertEqual(len(errors), 0)
 
-
     def assert_error(self, errors, field, message):
         self.assertEqual(len(errors), 1)
         self.assertEqual(errors[0].field, field)
         self.assertEqual(errors[0].message, message)
-
 
     def test_invalid_seals(self):
         tests = [0, -1, -100]
         for test in tests:
             with self.subTest(amount=test):
                 errors = validate_contract(default_contract(amount=test))
-                self.assert_error(errors, 'amount', 'Amount must be a positive integer.')
+                self.assert_error(
+                    errors, "amount", "Amount must be a positive integer."
+                )
 
-    
     def test_invalid_first_name(self):
-        tests = ['', 'Juhdu with Spaces', 'Juhdu-Khigbaa', ' ', '/4iieh)OEWP\\']
+        tests = ["", "Juhdu with Spaces", "Juhdu-Khigbaa", " ", "/4iieh)OEWP\\"]
         for test in tests:
             with self.subTest(first_name=test):
                 errors = validate_contract(default_contract(first_name=test))
-                self.assert_error(errors, 'first_name', 'First name must be non-empty and alphabetic.')
+                self.assert_error(
+                    errors, "first_name", "First name must be non-empty and alphabetic."
+                )
 
-        
     def test_invalid_last_name(self):
-        tests = ['', 'Khigbaa with Spaces', 'Khigbaa-Khigbaa', ' ', '/4iieh)OEWP\\']
+        tests = ["", "Khigbaa with Spaces", "Khigbaa-Khigbaa", " ", "/4iieh)OEWP\\"]
         for test in tests:
             with self.subTest(last_name=test):
                 errors = validate_contract(default_contract(last_name=test))
-                self.assert_error(errors, 'last_name', 'Last name must be non-empty and alphabetic.')
+                self.assert_error(
+                    errors, "last_name", "Last name must be non-empty and alphabetic."
+                )
 
 
 class TestCreateContract(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
-        self.db = SqlLiteClient(':memory:')
+        self.db = SqlLiteClient(":memory:")
         initialize_db(self.db)
-
 
     async def test_valid_contract_creation(self):
         contract = default_contract()
@@ -65,18 +60,22 @@ class TestCreateContract(unittest.IsolatedAsyncioTestCase):
         stored_contract = self.db.get_contract_by_discord_id(123456789012345678)
         self.assertEqual(stored_contract, contract)
 
-
     async def test_invalid_contract_raises_exception(self):
         contract = default_contract(
-            first_name='Juhdu 123',
-            last_name='Khigba  a',
-            amount=-5000
+            first_name="Juhdu 123", last_name="Khigba  a", amount=-5000
         )
         with self.assertRaises(ValidationException) as ve:
             await create_contract(contract)
         errors = ve.exception.errors
-        self.assertEqual(errors, [
-            ValidationError('first_name', 'First name must be non-empty and alphabetic.'),
-            ValidationError('last_name', 'Last name must be non-empty and alphabetic.'),
-            ValidationError('amount', 'Amount must be a positive integer.')
-        ])
+        self.assertEqual(
+            errors,
+            [
+                ValidationError(
+                    "first_name", "First name must be non-empty and alphabetic."
+                ),
+                ValidationError(
+                    "last_name", "Last name must be non-empty and alphabetic."
+                ),
+                ValidationError("amount", "Amount must be a positive integer."),
+            ],
+        )

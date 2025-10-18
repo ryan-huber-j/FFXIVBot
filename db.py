@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS contracts (
 
 
 class SqlLiteClient:
-    def __init__(self, source: str=DB_FILE):
+    def __init__(self, source: str = DB_FILE):
         self.connection = sqlite3.connect(source)
         self.cursor = self.connection.cursor()
         self.cursor.executescript(SCHEMA)
@@ -29,7 +29,12 @@ class SqlLiteClient:
             INSERT INTO contracts (discord_id, character_first_name, character_last_name, amount)
             VALUES (?, ?, ?, ?)
             """,
-            (contract.discord_id, contract.first_name, contract.last_name, contract.amount)
+            (
+                contract.discord_id,
+                contract.first_name,
+                contract.last_name,
+                contract.amount,
+            ),
         )
         self.connection.commit()
 
@@ -40,7 +45,7 @@ class SqlLiteClient:
             FROM contracts
             WHERE discord_id = ?
             """,
-            (discord_id,)
+            (discord_id,),
         )
         row = self.cursor.fetchone()
         return Contract(*row) if row else None

@@ -14,11 +14,17 @@ def initialize_db(db: SqlLiteClient):
 def validate_contract(contract: Contract) -> list[ValidationError]:
     errors = []
     if not contract.first_name.isalpha():
-        errors.append(ValidationError('first_name', 'First name must be non-empty and alphabetic.'))
+        errors.append(
+            ValidationError(
+                "first_name", "First name must be non-empty and alphabetic."
+            )
+        )
     if not contract.last_name.isalpha():
-        errors.append(ValidationError('last_name', 'Last name must be non-empty and alphabetic.'))
+        errors.append(
+            ValidationError("last_name", "Last name must be non-empty and alphabetic.")
+        )
     if contract.amount <= 0:
-        errors.append(ValidationError('amount', 'Amount must be a positive integer.'))
+        errors.append(ValidationError("amount", "Amount must be a positive integer."))
     return errors
 
 

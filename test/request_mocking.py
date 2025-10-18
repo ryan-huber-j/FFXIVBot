@@ -4,7 +4,7 @@ from lodestone import GrandCompanyRanking
 
 
 def fake_member_entry(member):
-  return f'''
+    return f"""
     <li class="entry"><a href="/lodestone/character/{member.id}/" class="entry__bg">
       <div class="entry__flex">
         <div class="entry__freecompany__center"><p class="entry__name">{member.name}</p>
@@ -15,17 +15,23 @@ def fake_member_entry(member):
         </div>
       </div>
     </a></li>
-  '''
+  """
 
 
-def mock_fc_members_response(hostname, status, fc_id, members=None, page=1, max_pages=1):
-  query = f'?page={page}' if page > 1 else ''
-  url = f'https://{hostname}/lodestone/freecompany/{fc_id}/member{query}'
-  matchers = [responses.matchers.query_param_matcher({'page': str(page)})] if page > 1 else []
+def mock_fc_members_response(
+    hostname, status, fc_id, members=None, page=1, max_pages=1
+):
+    query = f"?page={page}" if page > 1 else ""
+    url = f"https://{hostname}/lodestone/freecompany/{fc_id}/member{query}"
+    matchers = (
+        [responses.matchers.query_param_matcher({"page": str(page)})]
+        if page > 1
+        else []
+    )
 
-  if members is not None:
-    member_entries = '\n'.join(fake_member_entry(member) for member in members)
-    body = f'''
+    if members is not None:
+        member_entries = "\n".join(fake_member_entry(member) for member in members)
+        body = f"""
     <body>
       <ul class="btn__pager">
         <li class="btn__pager__current">Page {page} of {max_pages}</li>
@@ -34,21 +40,17 @@ def mock_fc_members_response(hostname, status, fc_id, members=None, page=1, max_
         {member_entries}
       </ul>
     </body>
-    '''
-  else:
-    body = ''
+    """
+    else:
+        body = ""
 
-  return responses.Response(
-      responses.GET,
-      url,
-      body=body,
-      status=status,
-      match=matchers
-  )
+    return responses.Response(
+        responses.GET, url, body=body, status=status, match=matchers
+    )
 
 
 def fake_gc_ranking_row(ranking: GrandCompanyRanking):
-  return f'''
+    return f"""
     <tr data-href="/lodestone/character/{ranking.character_id}/" class="clickable">
       <td class="ranking-character__number											"> {ranking.rank} </td>
       <td class="ranking-character__face"> <img
@@ -63,38 +65,34 @@ def fake_gc_ranking_row(ranking: GrandCompanyRanking):
           alt="Immortal Flames/Flame Captain" class="js__tooltip" data-tooltip="Immortal Flames/Flame Captain"> </td>
       <td class="ranking-character__value"> {ranking.seals} </td>
     </tr>
-  '''
+  """
 
 
 def mock_gc_rankings_response(hostname, status, world, rankings, page_num):
-  if rankings is None:
-    body = ''
-  else:
-    ranking_rows = '\n'.join(fake_gc_ranking_row(ranking) for ranking in rankings)
-    body = f'''
+    if rankings is None:
+        body = ""
+    else:
+        ranking_rows = "\n".join(fake_gc_ranking_row(ranking) for ranking in rankings)
+        body = f"""
       <table>
         <tbody>
           {ranking_rows}
         </tbody>
       </table>
-    '''
+    """
 
-  url = f'https://{hostname}/lodestone/ranking/gc/weekly?page={page_num}&worldname={world}'
-  return responses.Response(
-      responses.GET,
-      url,
-      body=body,
-      status=status,
-      content_type='text/html'
-  )
+    url = f"https://{hostname}/lodestone/ranking/gc/weekly?page={page_num}&worldname={world}"
+    return responses.Response(
+        responses.GET, url, body=body, status=status, content_type="text/html"
+    )
 
 
 def mock_free_companies_response(hostname, status_code, world, fcs=[]):
-  key = f'https://{hostname}/lodestone/freecompany?worldname={world}'
+    key = f"https://{hostname}/lodestone/freecompany?worldname={world}"
 
-  fc_html_elems = []
-  for free_company in fcs:
-    html = f'''
+    fc_html_elems = []
+    for free_company in fcs:
+        html = f"""
       <div class="entry">
         <a href="/lodestone/freecompany/{free_company.id}/" class="entry__block">
           <div class="entry__freecompany__inner">
@@ -116,19 +114,15 @@ def mock_free_companies_response(hostname, status_code, world, fcs=[]):
           </ul>
         </a>
       </div>
-    '''
-    fc_html_elems.append(html)
-  
-  body = f'''
+    """
+        fc_html_elems.append(html)
+
+    body = f"""
     <div>
       {''.join(fc_html_elems)}
     </div>
-  '''
+  """
 
-  return responses.Response(
-      responses.GET,
-      key,
-      body=body,
-      status=status_code,
-      content_type='text/html'
-  )
+    return responses.Response(
+        responses.GET, key, body=body, status=status_code, content_type="text/html"
+    )
