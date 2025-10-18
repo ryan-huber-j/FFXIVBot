@@ -47,7 +47,25 @@ def validate_contract(
     return errors
 
 
-def participate(participant: Participant):
+def participate(discord_id: int, first_name: str, last_name: str):
+    participant = Participant(
+        discord_id=discord_id,
+        first_name=first_name,
+        last_name=last_name,
+        is_coach=False,
+    )
+    if len(errors := validate_participant(participant)) > 0:
+        raise ValidationException(errors)
+    _db.insert_participant(participant)
+
+
+def participate_as_coach(discord_id: int, first_name: str, last_name: str):
+    participant = Participant(
+        discord_id=discord_id,
+        first_name=first_name,
+        last_name=last_name,
+        is_coach=True,
+    )
     if len(errors := validate_participant(participant)) > 0:
         raise ValidationException(errors)
     _db.insert_participant(participant)
