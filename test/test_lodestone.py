@@ -63,7 +63,7 @@ class TestGetFreeCompanyMembers(unittest.TestCase):
       self.assertRaises(LodestoneScraperException, lambda: self.scraper.get_free_company_members(FC_ID))
 
 
-class TestGetGranCompanyRankings(unittest.TestCase):
+class TestGetGrandCompanyRankings(unittest.TestCase):
   def setUp(self):
     self.scraper = LodestoneScraper('https://' + HOSTNAME)
 

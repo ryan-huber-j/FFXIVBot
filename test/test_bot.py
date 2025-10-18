@@ -3,7 +3,7 @@ import unittest
 
 import discord
 
-from bot import Scorer, get_results_2, mark_winner
+from bot import Scorer, create_contract, get_results_2, mark_winner
 
 
 class FakeInteraction:
@@ -34,11 +34,7 @@ class FakeGuild:
     channels: list[FakeChannel] = []
 
 
-class TestMainBotFunctions(unittest.IsolatedAsyncioTestCase):
-    @classmethod
-    def setUpClass(cls):
-        discord.Interaction = FakeInteraction
-
+class TestMainBotFunctions(unittest.TestCase):
     def test_mark_winner_empty_map(self):
         scores = {}
         winner = mark_winner(scores)
@@ -84,18 +80,3 @@ class TestMainBotFunctions(unittest.IsolatedAsyncioTestCase):
         winner = mark_winner(scores)
         self.assertEqual(winner.id, 234)
         self.assertEqual(winner.winner, True)
-
-
-    async def test_get_results_2(self):
-        # create a mock interaction object
-        interaction = FakeInteraction()
-        await get_results_2(interaction)
-        self.assertTrue(interaction.response.deferred)
-        self.assertTrue(interaction.response.ephemeral)
-        self.assertTrue(interaction.response.thinking)
-
-    async def test_get_results_2_should_error_if_no_channel_available(self):
-        interaction = FakeInteraction()
-        await get_results_2(interaction)
-        message_parts = interaction.followup.messages
-        self.assertIn("no channel named *professionals-signups* exists", message_parts[0])

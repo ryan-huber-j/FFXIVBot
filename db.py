@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 import sqlite3
 
-from bot import Contract
+from commands import Contract
 
 DB_FILE = "data.db"
 
