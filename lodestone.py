@@ -44,9 +44,7 @@ class LodestoneScraper:
         if page_num is None:
             url = f"{self._base_url}/lodestone/freecompany/{fc_id}/member"
         else:
-            url = (
-                f"{self._base_url}/lodestone/freecompany/{fc_id}/member?page={page_num}"
-            )
+            url = f"{self._base_url}/lodestone/freecompany/{fc_id}/member?page={page_num}"
 
         response = requests.get(url)
 
@@ -91,9 +89,7 @@ class LodestoneScraper:
 
             member_name = member_tag.find("p", class_="entry__name").string
 
-            member_fc_info_tag = member_tag.find(
-                "ul", class_="entry__freecompany__info"
-            )
+            member_fc_info_tag = member_tag.find("ul", class_="entry__freecompany__info")
             member_rank = member_fc_info_tag.find("li").find("span").string
 
             fc_members.append(FCMember(lodestone_id, member_name, member_rank))

@@ -26,9 +26,7 @@ class TestValidateContractInput(unittest.TestCase):
         for test in tests:
             with self.subTest(amount=test):
                 errors = validate_contract(default_contract(amount=test))
-                self.assert_error(
-                    errors, "amount", "Amount must be a positive integer."
-                )
+                self.assert_error(errors, "amount", "Amount must be a positive integer.")
 
     def test_invalid_first_name(self):
         tests = ["", "Juhdu with Spaces", "Juhdu-Khigbaa", " ", "/4iieh)OEWP\\"]

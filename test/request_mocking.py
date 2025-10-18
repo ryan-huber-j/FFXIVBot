@@ -18,15 +18,11 @@ def fake_member_entry(member):
   """
 
 
-def mock_fc_members_response(
-    hostname, status, fc_id, members=None, page=1, max_pages=1
-):
+def mock_fc_members_response(hostname, status, fc_id, members=None, page=1, max_pages=1):
     query = f"?page={page}" if page > 1 else ""
     url = f"https://{hostname}/lodestone/freecompany/{fc_id}/member{query}"
     matchers = (
-        [responses.matchers.query_param_matcher({"page": str(page)})]
-        if page > 1
-        else []
+        [responses.matchers.query_param_matcher({"page": str(page)})] if page > 1 else []
     )
 
     if members is not None:

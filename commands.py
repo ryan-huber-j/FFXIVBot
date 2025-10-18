@@ -15,9 +15,7 @@ def validate_contract(contract: Contract) -> list[ValidationError]:
     errors = []
     if not contract.first_name.isalpha():
         errors.append(
-            ValidationError(
-                "first_name", "First name must be non-empty and alphabetic."
-            )
+            ValidationError("first_name", "First name must be non-empty and alphabetic.")
         )
     if not contract.last_name.isalpha():
         errors.append(

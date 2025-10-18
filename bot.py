@@ -77,13 +77,9 @@ def get_fc_member_ids() -> list[str]:
 )
 async def get_results(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True, thinking=True)
-    channel = discord.utils.get(
-        interaction.guild.channels, name="professionals-signups"
-    )
+    channel = discord.utils.get(interaction.guild.channels, name="professionals-signups")
     if channel is None:
-        await interaction.followup.send(
-            "no channel named *professionals-signups* exists"
-        )
+        await interaction.followup.send("no channel named *professionals-signups* exists")
         return
     role = discord.utils.get(interaction.guild.roles, name="Professional")
     if role is None:
@@ -168,9 +164,7 @@ async def get_results(interaction: discord.Interaction):
         ]
     )
     honorable_mentions_list = "\n".join(
-        build_score_message(user)
-        for user in results.values()
-        if user.designation == "x"
+        build_score_message(user) for user in results.values() if user.designation == "x"
     )
 
     message_parts = [
@@ -215,9 +209,7 @@ async def get_results_2(interaction: discord.Interaction):
     )
 
     if signup_channel is None:
-        await interaction.followup.send(
-            "no channel named *professionals-signups* exists"
-        )
+        await interaction.followup.send("no channel named *professionals-signups* exists")
         return
 
 
@@ -267,9 +259,7 @@ async def getResultsOnPage(results, x, fcm, participants, coaches):
         player_id = str(result["data-href"]).split("/")[3]
         if player_id in fcm:
             score = int(
-                str(
-                    result.find("td", {"class": "ranking-character__value"}).text
-                ).strip()
+                str(result.find("td", {"class": "ranking-character__value"}).text).strip()
             )
             name = str(result.find("h4").contents[0]).strip()
             ranking = int(
@@ -297,14 +287,6 @@ async def getResultsOnPage(results, x, fcm, participants, coaches):
                 results[player_id] = Scorer(
                     player_id, name, score, ranking, designation, win
                 )
-
-
-@dataclass
-class Participant:
-    id: str
-    name: str
-    is_coach: bool = False
-    has_participated: bool = False
 
 
 class Scorer(NamedTuple):
