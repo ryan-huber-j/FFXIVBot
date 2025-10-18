@@ -1,8 +1,8 @@
 import re
-from typing_extensions import NamedTuple
 
 from bs4 import BeautifulSoup
 import requests
+from typing_extensions import NamedTuple
 
 _page_number_regex = re.compile("Page \d of (\d)")
 _character_link_regex = re.compile("/lodestone/character/(.+)/")

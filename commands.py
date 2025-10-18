@@ -1,5 +1,11 @@
 from db import SqlLiteClient
-from domain import Contract, ContractInput, Participant, ValidationError, ValidationException
+from domain import (
+    Contract,
+    ContractInput,
+    Participant,
+    ValidationError,
+    ValidationException,
+)
 
 _db = None
 
@@ -56,8 +62,10 @@ async def create_contract(input: ContractInput):
     )
     contract = Contract(discord_id=input.discord_id, amount=input.amount)
 
-    validation_errors = validate_participant(participant) + validate_contract(contract, input.contract_amounts)
+    validation_errors = validate_participant(participant) + validate_contract(
+        contract, input.contract_amounts
+    )
     if len(validation_errors) > 0:
         raise ValidationException(validation_errors)
-    
+
     _db.insert_contract(contract)
