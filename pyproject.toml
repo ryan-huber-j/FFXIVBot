@@ -18,7 +18,7 @@ test = [
 
 [tool.isort]
 profile = "black"
-line_length = 88
+line_length = 90
 include_trailing_comma = true
 combine_as_imports = true
 force_sort_within_sections = true
