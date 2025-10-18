@@ -24,7 +24,7 @@ class TestValidateContractInput(unittest.TestCase):
         self.assertEqual(errors[0].message, message)
 
     def test_invalid_seals(self):
-        tests = [0, -1, -100]
+        tests = [0, -1, -100, 300001, 430000, 1e8]
         for test in tests:
             with self.subTest(amount=test):
                 errors = validate_contract(default_contract(amount=test), contract_values)
