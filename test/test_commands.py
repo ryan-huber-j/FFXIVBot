@@ -28,6 +28,21 @@ def default_participant(
     )
 
 
+def default_contract_input(
+    discord_id=default_discord_id,
+    first_name="Juhdu",
+    last_name="Khigbaa",
+    amount=500000,
+) -> ContractInput:
+    return ContractInput(
+        discord_id=discord_id,
+        first_name=first_name,
+        last_name=last_name,
+        amount=amount,
+        contract_amounts=contract_values,
+    )
+
+
 def assert_error(errors, field, message):
     tc.assertEqual(len(errors), 1)
     tc.assertEqual(errors[0].field, field)
@@ -122,7 +137,7 @@ class TestParticipation(unittest.IsolatedAsyncioTestCase):
         errors = ve.exception.errors
         self.assertEqual(len(errors), 3)
 
-    async def should_end_participation(self):
+    async def test_should_end_participation(self):
         participant = default_participant()
         await participate_as_player(
             participant.discord_id, participant.first_name, participant.last_name
@@ -131,34 +146,32 @@ class TestParticipation(unittest.IsolatedAsyncioTestCase):
         stored_participant = self.db.get_participant(participant.discord_id)
         self.assertIsNone(stored_participant)
 
+    async def test_should_end_participation_with_contract(self):
+        participant = default_participant()
+        contract = default_contract()
+        await participate_as_player(
+            participant.discord_id, participant.first_name, participant.last_name
+        )
+        await create_contract(default_contract_input())
+        await end_participation(participant.discord_id)
+        stored_participant = self.db.get_participant(participant.discord_id)
+        stored_contract = self.db.get_contract(contract.discord_id)
+        self.assertIsNone(stored_participant)
+        self.assertIsNone(stored_contract)
+
 
 class TestCreateContract(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.db = SqlLiteClient(":memory:")
         initialize_db(self.db)
 
-    def default_input(
-        self,
-        discord_id=default_discord_id,
-        first_name="Juhdu",
-        last_name="Khigbaa",
-        amount=500000,
-    ) -> ContractInput:
-        return ContractInput(
-            discord_id=discord_id,
-            first_name=first_name,
-            last_name=last_name,
-            amount=amount,
-            contract_amounts=contract_values,
-        )
-
     async def test_valid_contract_creation(self):
-        await create_contract(self.default_input())
+        await create_contract(default_contract_input())
         stored_contract = self.db.get_contract(default_discord_id)
         self.assertEqual(stored_contract, default_contract())
 
     async def test_invalid_contract_raises_exception(self):
-        input = self.default_input(amount=-500000, first_name="Juhdu 123")
+        input = default_contract_input(amount=-500000, first_name="Juhdu 123")
         with self.assertRaises(ValidationException) as ve:
             await create_contract(input)
         errors = ve.exception.errors
@@ -166,7 +179,7 @@ class TestCreateContract(unittest.IsolatedAsyncioTestCase):
 
     async def test_should_end_contract(self):
         contract = default_contract()
-        await create_contract(self.default_input())
+        await create_contract(default_contract_input())
         await end_contract(contract.discord_id)
         stored_contract = self.db.get_contract(contract.discord_id)
         self.assertIsNone(stored_contract)

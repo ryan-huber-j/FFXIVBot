@@ -75,6 +75,7 @@ async def end_participation(discord_id: int):
     if len(errors := validate_discord_id(discord_id)) > 0:
         raise ValidationException(errors)
     _db.delete_participant(discord_id)
+    _db.delete_contract(discord_id)
 
 
 async def create_contract(input: ContractInput):
