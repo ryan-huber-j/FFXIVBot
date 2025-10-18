@@ -101,13 +101,13 @@ class TestParticipation(unittest.IsolatedAsyncioTestCase):
         await participate_as_player(
             participant.discord_id, participant.first_name, participant.last_name
         )
-        stored_participant = self.db.get_participant_by_discord_id(participant.discord_id)
+        stored_participant = self.db.get_participant(participant.discord_id)
         self.assertEqual(stored_participant, participant)
 
     async def test_should_store_valid_coach(self):
         coach = default_participant(is_coach=True)
         await participate_as_coach(coach.discord_id, coach.first_name, coach.last_name)
-        stored_participant = self.db.get_participant_by_discord_id(coach.discord_id)
+        stored_participant = self.db.get_participant(coach.discord_id)
         self.assertEqual(stored_participant, coach)
 
     async def test_invalid_participant(self):
@@ -121,6 +121,15 @@ class TestParticipation(unittest.IsolatedAsyncioTestCase):
             await participate_as_coach("not an int", "", "Khigbaa123")
         errors = ve.exception.errors
         self.assertEqual(len(errors), 3)
+
+    async def should_end_participation(self):
+        participant = default_participant()
+        await participate_as_player(
+            participant.discord_id, participant.first_name, participant.last_name
+        )
+        await end_participation(participant.discord_id)
+        stored_participant = self.db.get_participant(participant.discord_id)
+        self.assertIsNone(stored_participant)
 
 
 class TestCreateContract(unittest.IsolatedAsyncioTestCase):
@@ -145,7 +154,7 @@ class TestCreateContract(unittest.IsolatedAsyncioTestCase):
 
     async def test_valid_contract_creation(self):
         await create_contract(self.default_input())
-        stored_contract = self.db.get_contract_by_discord_id(default_discord_id)
+        stored_contract = self.db.get_contract(default_discord_id)
         self.assertEqual(stored_contract, default_contract())
 
     async def test_invalid_contract_raises_exception(self):

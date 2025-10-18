@@ -42,7 +42,7 @@ class SqlLiteClient:
         )
         self.connection.commit()
 
-    def get_participant_by_discord_id(self, discord_id: int) -> Participant | None:
+    def get_participant(self, discord_id: int) -> Participant | None:
         self.cursor.execute(
             """
             SELECT discord_id, first_name, last_name, is_coach
@@ -54,7 +54,7 @@ class SqlLiteClient:
         row = self.cursor.fetchone()
         return Participant(*row) if row else None
 
-    def delete_participant_by_discord_id(self, discord_id: int) -> None:
+    def delete_participant(self, discord_id: int) -> None:
         self.cursor.execute(
             """
             DELETE FROM participants
@@ -77,7 +77,7 @@ class SqlLiteClient:
         )
         self.connection.commit()
 
-    def get_contract_by_discord_id(self, discord_id: int) -> Contract | None:
+    def get_contract(self, discord_id: int) -> Contract | None:
         self.cursor.execute(
             """
             SELECT discord_id, amount

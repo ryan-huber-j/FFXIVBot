@@ -72,7 +72,9 @@ async def participate_as_coach(discord_id: int, first_name: str, last_name: str)
 
 
 async def end_participation(discord_id: int):
-    pass
+    if len(errors := validate_discord_id(discord_id)) > 0:
+        raise ValidationException(errors)
+    _db.delete_participant(discord_id)
 
 
 async def create_contract(input: ContractInput):
