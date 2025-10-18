@@ -16,8 +16,6 @@ CREATE TABLE IF NOT EXISTS participants (
 
 CREATE TABLE IF NOT EXISTS contracts (
     discord_id INTEGER NOT NULL,
-    character_first_name TEXT NOT NULL,
-    character_last_name TEXT NOT NULL,
     amount INTEGER NOT NULL,
     PRIMARY KEY (discord_id)
 );
@@ -61,13 +59,11 @@ class SqlLiteClient:
     def insert_contract(self, contract: Contract) -> None:
         self.cursor.execute(
             """
-            INSERT INTO contracts (discord_id, character_first_name, character_last_name, amount)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO contracts (discord_id, amount)
+            VALUES (?, ?)
             """,
             (
                 contract.discord_id,
-                contract.first_name,
-                contract.last_name,
                 contract.amount,
             ),
         )
@@ -76,7 +72,7 @@ class SqlLiteClient:
     def get_contract_by_discord_id(self, discord_id: int) -> Contract | None:
         self.cursor.execute(
             """
-            SELECT discord_id, character_first_name, character_last_name, amount
+            SELECT discord_id, amount
             FROM contracts
             WHERE discord_id = ?
             """,

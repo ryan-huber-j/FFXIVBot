@@ -52,14 +52,14 @@ async def create_contract(
     character_last_name: str,
     amount: int,
 ) -> None:
-    contract = Contract(
+    contract_input = commands.ContractInput(
         discord_id=interaction.user.id,
         first_name=character_first_name,
         last_name=character_last_name,
         amount=amount,
+        contract_amounts=[300000, 420000, 500000, 800000, 1000000],
     )
-
-    await commands.create_contract(contract)
+    await commands.create_contract(contract_input)
     await interaction.response.send_message(
         f"Contract created for {character_first_name} {character_last_name}"
         "to earn {amount} seals this week!"

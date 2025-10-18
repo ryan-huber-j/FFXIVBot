@@ -1,11 +1,11 @@
 from dataclasses import dataclass
+from typing import NamedTuple
 
 
 @dataclass
 class ValidationError:
     field: str
     message: str
-
 
 class ValidationException(Exception):
     def __init__(self, errors: list[ValidationError]):
@@ -15,18 +15,20 @@ class ValidationException(Exception):
             + ", ".join([f"{e.field}: {e.message}" for e in errors])
         )
 
-
-@dataclass
-class Contract:
-    discord_id: int
-    first_name: str
-    last_name: str
-    amount: int
-
-
 @dataclass
 class Participant:
     discord_id: int
     first_name: str
     last_name: str
     is_coach: bool
+@dataclass
+class Contract:
+    discord_id: int
+    amount: int
+
+class ContractInput(NamedTuple):
+    discord_id: int
+    first_name: str
+    last_name: str
+    amount: int
+    contract_amounts: list[int]

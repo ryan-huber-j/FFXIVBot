@@ -1,7 +1,7 @@
 from attr import dataclass
 
 from db import SqlLiteClient
-from domain import Contract, Participant, ValidationError, ValidationException
+from domain import Contract, ContractInput, Participant, ValidationError, ValidationException
 
 _db = None
 
@@ -11,10 +11,15 @@ def initialize_db(db: SqlLiteClient):
     _db = db
 
 
-def validate_participant(participant: Participant) -> list[ValidationError]:
+def validate_discord_id(discord_id) -> list[ValidationError]:
     errors = []
-    if not isinstance(participant.discord_id, int):
+    if not isinstance(discord_id, int):
         errors.append(ValidationError("discord_id", "Discord ID must be an integer."))
+    return errors
+
+
+def validate_participant(participant: Participant) -> list[ValidationError]:
+    errors = validate_discord_id(participant.discord_id)
     if not participant.first_name.isalpha():
         errors.append(
             ValidationError("first_name", "First name must be non-empty and alphabetic.")
@@ -29,15 +34,7 @@ def validate_participant(participant: Participant) -> list[ValidationError]:
 def validate_contract(
     contract: Contract, contract_amounts: list[int]
 ) -> list[ValidationError]:
-    errors = []
-    if not contract.first_name.isalpha():
-        errors.append(
-            ValidationError("first_name", "First name must be non-empty and alphabetic.")
-        )
-    if not contract.last_name.isalpha():
-        errors.append(
-            ValidationError("last_name", "Last name must be non-empty and alphabetic.")
-        )
+    errors = validate_discord_id(contract.discord_id)
     if contract.amount not in contract_amounts:
         contract_amounts_str = ", ".join(str(amount) for amount in contract_amounts)
         errors.append(
@@ -52,7 +49,17 @@ def participate(participant: Participant):
     _db.insert_participant(participant)
 
 
-async def create_contract(contract: Contract, contract_amounts: list[int] = []):
-    if len(errors := validate_contract(contract, contract_amounts)) > 0:
-        raise ValidationException(errors)
+async def create_contract(input: ContractInput):
+    participant = Participant(
+        discord_id=input.discord_id,
+        first_name=input.first_name,
+        last_name=input.last_name,
+        is_coach=False,
+    )
+    contract = Contract(discord_id=input.discord_id, amount=input.amount)
+
+    validation_errors = validate_participant(participant) + validate_contract(contract, input.contract_amounts)
+    if len(validation_errors) > 0:
+        raise ValidationException(validation_errors)
+    
     _db.insert_contract(contract)
