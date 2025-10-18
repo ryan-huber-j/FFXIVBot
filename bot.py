@@ -9,6 +9,7 @@ from discord import app_commands
 from dotenv import load_dotenv
 import requests
 
+from domain import Contract
 from lodestone import LodestoneScraper
 
 DUPLICATION_EXPLANATION = " *Note: Defaulted to highest rank listed and combined score between two ranks earned*"
@@ -50,6 +51,14 @@ async def create_contract(
     character_last_name: str,
     amount: int,
 ) -> None:
+    contract = Contract(
+        discord_id=str(interaction.user.id),
+        first_name=character_first_name,
+        last_name=character_last_name,
+        amount=amount
+    )
+    
+    await create_contract(contract)
     await interaction.response.send_message(f"Contract created for {character_first_name} {character_last_name} to earn {amount} seals this week!")
 
 

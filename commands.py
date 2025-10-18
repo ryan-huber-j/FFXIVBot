@@ -1,24 +1,14 @@
 from attr import dataclass
 
+from db import SqlLiteClient
+from domain import Contract, ValidationError, ValidationException
 
-@dataclass
-class ValidationError:
-    field: str
-    message: str
-
-
-class ValidationException(Exception):
-    def __init__(self, errors: list[ValidationError]):
-        self.errors = errors
-        super().__init__("Validation failed with errors: " + ", ".join([f"{e.field}: {e.message}" for e in errors]))
+_db = None
 
 
-@dataclass
-class Contract:
-    discord_id: str
-    first_name: str
-    last_name: str
-    amount: int
+def initialize_db(db: SqlLiteClient):
+    global _db
+    _db = db
 
 
 def validate_contract(contract: Contract) -> list[ValidationError]:
@@ -35,3 +25,4 @@ def validate_contract(contract: Contract) -> list[ValidationError]:
 async def create_contract(contract: Contract):
     if len(errors := validate_contract(contract)) > 0:
         raise ValidationException(errors)
+    _db.insert_contract(contract)

@@ -1,13 +1,13 @@
 from dataclasses import dataclass
 import sqlite3
 
-from commands import Contract
+from domain import Contract
 
 DB_FILE = "data.db"
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS contracts (
-    discord_id TEXT NOT NULL,
+    discord_id INTEGER NOT NULL,
     character_first_name TEXT NOT NULL,
     character_last_name TEXT NOT NULL,
     amount INTEGER NOT NULL,
@@ -33,7 +33,7 @@ class SqlLiteClient:
         )
         self.connection.commit()
 
-    def get_contract_by_discord_id(self, discord_id: str) -> Contract | None:
+    def get_contract_by_discord_id(self, discord_id: int) -> Contract | None:
         self.cursor.execute(
             """
             SELECT discord_id, character_first_name, character_last_name, amount

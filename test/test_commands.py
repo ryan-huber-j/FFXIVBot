@@ -3,9 +3,23 @@ import unittest
 from commands import *
 
 
+def default_contract(
+        discord_id=123456789012345678, 
+        first_name='Juhdu', 
+        last_name='Khigbaa', 
+        amount=5000
+) -> Contract:
+    return Contract(
+        discord_id=discord_id,
+        first_name=first_name,
+        last_name=last_name,
+        amount=amount
+    )
+
+
 class TestValidateContractInput(unittest.TestCase):
     def test_valid_input(self):
-        errors = validate_contract(Contract('1234', 'Juhdu', 'Khigbaa', 5000))
+        errors = validate_contract(default_contract())
         self.assertEqual(len(errors), 0)
 
 
@@ -19,7 +33,7 @@ class TestValidateContractInput(unittest.TestCase):
         tests = [0, -1, -100]
         for test in tests:
             with self.subTest(amount=test):
-                errors = validate_contract(Contract('1234', 'Juhdu', 'Khigbaa', test))
+                errors = validate_contract(default_contract(amount=test))
                 self.assert_error(errors, 'amount', 'Amount must be a positive integer.')
 
     
@@ -27,7 +41,7 @@ class TestValidateContractInput(unittest.TestCase):
         tests = ['', 'Juhdu with Spaces', 'Juhdu-Khigbaa', ' ', '/4iieh)OEWP\\']
         for test in tests:
             with self.subTest(first_name=test):
-                errors = validate_contract(Contract('1234', test, 'Khigbaa', 5000))
+                errors = validate_contract(default_contract(first_name=test))
                 self.assert_error(errors, 'first_name', 'First name must be non-empty and alphabetic.')
 
         
@@ -35,24 +49,25 @@ class TestValidateContractInput(unittest.TestCase):
         tests = ['', 'Khigbaa with Spaces', 'Khigbaa-Khigbaa', ' ', '/4iieh)OEWP\\']
         for test in tests:
             with self.subTest(last_name=test):
-                errors = validate_contract(Contract('1234', 'Juhdu', test, 5000))
+                errors = validate_contract(default_contract(last_name=test))
                 self.assert_error(errors, 'last_name', 'Last name must be non-empty and alphabetic.')
 
 
 class TestCreateContract(unittest.IsolatedAsyncioTestCase):
-    async def test_happy_path(self):
-        contract = Contract(
-            discord_id='123456789012345678',
-            first_name='Juhdu',
-            last_name='Khigbaa',
-            amount=5000
-        )
+    def setUp(self):
+        self.db = SqlLiteClient(':memory:')
+        initialize_db(self.db)
+
+
+    async def test_valid_contract_creation(self):
+        contract = default_contract()
         await create_contract(contract)
+        stored_contract = self.db.get_contract_by_discord_id(123456789012345678)
+        self.assertEqual(stored_contract, contract)
 
 
     async def test_invalid_contract_raises_exception(self):
-        contract = Contract(
-            discord_id='123456789012345678',
+        contract = default_contract(
             first_name='Juhdu 123',
             last_name='Khigba  a',
             amount=-5000
