@@ -9,6 +9,7 @@ from discord import app_commands
 from dotenv import load_dotenv
 import requests
 
+import commands
 from domain import Contract
 from lodestone import LodestoneScraper
 
@@ -52,13 +53,13 @@ async def create_contract(
     amount: int,
 ) -> None:
     contract = Contract(
-        discord_id=str(interaction.user.id),
+        discord_id=interaction.user.id,
         first_name=character_first_name,
         last_name=character_last_name,
         amount=amount,
     )
 
-    await create_contract(contract)
+    await commands.create_contract(contract)
     await interaction.response.send_message(
         f"Contract created for {character_first_name} {character_last_name}"
         "to earn {amount} seals this week!"
