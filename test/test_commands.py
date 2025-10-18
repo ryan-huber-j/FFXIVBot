@@ -7,17 +7,28 @@ contract_values = [300000, 420000, 500000, 800000, 1000000]
 
 
 def default_contract(
-    discord_id=123456789012345678, first_name="Juhdu", last_name="Khigbaa", amount=500000
+    discord_id=123456789012345678,
+    first_name="Juhdu",
+    last_name="Khigbaa",
+    amount=500000,
 ) -> Contract:
     return Contract(
-        discord_id=discord_id, first_name=first_name, last_name=last_name, amount=amount
+        discord_id=discord_id,
+        first_name=first_name,
+        last_name=last_name,
+        amount=amount,
     )
 
 
 def default_participant(
-    discord_id=123456789012345678, first_name="Juhdu", last_name="Khigbaa"
+    discord_id=123456789012345678, first_name="Juhdu", last_name="Khigbaa", is_coach=False
 ) -> Participant:
-    return Participant(discord_id=discord_id, first_name=first_name, last_name=last_name)
+    return Participant(
+        discord_id=discord_id,
+        first_name=first_name,
+        last_name=last_name,
+        is_coach=is_coach,
+    )
 
 
 def assert_error(errors, field, message):
@@ -28,11 +39,7 @@ def assert_error(errors, field, message):
 
 class TestValidateParticipant(unittest.TestCase):
     def test_valid_input(self):
-        errors = validate_participant(
-            Participant(
-                discord_id=123456789012345678, first_name="Juhdu", last_name="Khigbaa"
-            )
-        )
+        errors = validate_participant(default_participant())
         self.assertEqual(len(errors), 0)
 
     def test_invalid_discord_id(self):
@@ -62,25 +69,27 @@ class TestValidateParticipant(unittest.TestCase):
 
 
 class TestParticipate(unittest.TestCase):
+    def setUp(self):
+        self.db = SqlLiteClient(":memory:")
+        initialize_db(self.db)
+
     def test_participate_no_error(self):
-        participant = Participant(
-            discord_id=123456789012345678, first_name="Juhdu", last_name="Khigbaa"
-        )
-        try:
-            participate(participant)
-        except Exception as e:
-            self.fail(f"participate() raised an exception: {e}")
+        participant = default_participant()
+        errors = participate(participant)
+        stored_participant = self.db.get_participant_by_discord_id(participant.discord_id)
+        self.assertEqual(stored_participant, participant)
 
     def test_participate_invalid_participant(self):
         participant = Participant(
             discord_id="not_an_int",
             first_name="Juhdu 123",
             last_name="Kh igs09j3kE$$##baa",
+            is_coach=False,
         )
-        try:
+        with self.assertRaises(ValidationException) as ve:
             participate(participant)
-        except Exception as e:
-            self.fail(f"participate() raised an exception: {e}")
+        errors = ve.exception.errors
+        self.assertEqual(len(errors), 3)
 
 
 class TestValidateContractInput(unittest.TestCase):

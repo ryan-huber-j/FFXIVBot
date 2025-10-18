@@ -47,7 +47,9 @@ def validate_contract(
 
 
 def participate(participant: Participant):
-    pass
+    if len(errors := validate_participant(participant)) > 0:
+        raise ValidationException(errors)
+    _db.insert_participant(participant)
 
 
 async def create_contract(contract: Contract, contract_amounts: list[int] = []):

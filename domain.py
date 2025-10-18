@@ -29,3 +29,4 @@ class Participant:
     discord_id: int
     first_name: str
     last_name: str
+    is_coach: bool
