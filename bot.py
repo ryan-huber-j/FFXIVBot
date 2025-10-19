@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 import requests
 
 import commands
-from domain import Contract
+from domain import ContractInput
 from lodestone import LodestoneScraper
 
 DUPLICATION_EXPLANATION = " *Note: Defaulted to highest rank listed and combined score between two ranks earned*"
@@ -51,7 +51,7 @@ async def create_contract(
     character_last_name: str,
     amount: int,
 ) -> None:
-    contract_input = commands.ContractInput(
+    contract_input = ContractInput(
         discord_id=interaction.user.id,
         first_name=character_first_name,
         last_name=character_last_name,

@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import NamedTuple
 
 
@@ -33,3 +34,34 @@ class ContractInput(NamedTuple):
     last_name: str
     amount: int
     contract_amounts: list[int]
+
+
+class PlayerScore(NamedTuple):
+    discord_id: int
+    first_name: str
+    last_name: str
+    seals_earned: int
+
+
+class WinnerReason(Enum):
+    HIGHEST_SEALS = 1
+    TIE_BREAKER = 2
+    NO_ELIGIBLE_PLAYERS = 3
+
+
+class CompletedContract(NamedTuple):
+    discord_id: int
+    first_name: str
+    last_name: str
+    amount: int
+    is_completed: bool
+    payout: int
+
+
+class CompetitionResults(NamedTuple):
+    player_scores: list[PlayerScore]
+    competition_winner: PlayerScore | None
+    drawing_winner: PlayerScore | None
+    competition_winner_reason: WinnerReason
+    drawing_winner_reason: WinnerReason
+    completed_contracts: list[CompletedContract]

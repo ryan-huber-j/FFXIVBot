@@ -1,18 +1,23 @@
 from db import SqlLiteClient
 from domain import (
+    CompetitionResults,
     Contract,
     ContractInput,
     Participant,
     ValidationError,
     ValidationException,
+    WinnerReason,
 )
+from lodestone import LodestoneScraper
 
 _db = None
+_lodestone = None
 
 
-def initialize_db(db: SqlLiteClient):
-    global _db
+def initialize(db: SqlLiteClient, scraper: LodestoneScraper):
+    global _db, _lodestone
     _db = db
+    _lodestone = scraper
 
 
 def validate_discord_id(discord_id) -> list[ValidationError]:
@@ -100,3 +105,14 @@ async def end_contract(discord_id: int):
     if len(errors := validate_discord_id(discord_id)) > 0:
         raise ValidationException(errors)
     _db.delete_contract(discord_id)
+
+
+async def get_competition_results() -> CompetitionResults:
+    return CompetitionResults(
+        player_scores=[],
+        competition_winner=None,
+        drawing_winner=None,
+        competition_winner_reason=WinnerReason.NO_ELIGIBLE_PLAYERS,
+        drawing_winner_reason=WinnerReason.NO_ELIGIBLE_PLAYERS,
+        completed_contracts=[],
+    )

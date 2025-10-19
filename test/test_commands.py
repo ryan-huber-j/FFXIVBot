@@ -1,6 +1,7 @@
 import unittest
 
 from commands import *
+from domain import WinnerReason
 
 tc = unittest.TestCase()
 contract_values = [300000, 420000, 500000, 800000, 1000000]
@@ -109,7 +110,7 @@ class TestValidateContract(unittest.TestCase):
 class TestParticipation(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.db = SqlLiteClient(":memory:")
-        initialize_db(self.db)
+        initialize(self.db, None)
 
     async def test_should_store_valid_participant_as_non_coach(self):
         participant = default_participant()
@@ -163,7 +164,7 @@ class TestParticipation(unittest.IsolatedAsyncioTestCase):
 class TestCreateContract(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.db = SqlLiteClient(":memory:")
-        initialize_db(self.db)
+        initialize(self.db, None)
 
     async def test_valid_contract_creation(self):
         await create_contract(default_contract_input())
@@ -183,3 +184,20 @@ class TestCreateContract(unittest.IsolatedAsyncioTestCase):
         await end_contract(contract.discord_id)
         stored_contract = self.db.get_contract(contract.discord_id)
         self.assertIsNone(stored_contract)
+
+
+class TestGetCompetitionResults(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        self.db = SqlLiteClient(":memory:")
+        initialize(self.db, None)
+
+    async def test_should_return_no_results_when_no_competitors(self):
+        results = await get_competition_results()
+        self.assertEqual(results.player_scores, [])
+        self.assertIsNone(results.competition_winner)
+        self.assertIsNone(results.drawing_winner)
+        self.assertEqual(results.drawing_winner_reason, WinnerReason.NO_ELIGIBLE_PLAYERS)
+        self.assertEqual(
+            results.competition_winner_reason, WinnerReason.NO_ELIGIBLE_PLAYERS
+        )
+        self.assertEqual(results.completed_contracts, [])
