@@ -43,7 +43,7 @@ class PlayerScore(NamedTuple):
     seals_earned: int
 
 
-class WinnerReason(Enum):
+class WinReason(Enum):
     HIGHEST_SEALS = 1
     TIE_BREAKER = 2
     NO_ELIGIBLE_PLAYERS = 3
@@ -62,6 +62,6 @@ class CompetitionResults(NamedTuple):
     player_scores: list[PlayerScore]
     competition_winner: PlayerScore | None
     drawing_winner: PlayerScore | None
-    competition_winner_reason: WinnerReason
-    drawing_winner_reason: WinnerReason
+    competition_win_reason: WinReason
+    drawing_win_reason: WinReason
     completed_contracts: list[CompletedContract]

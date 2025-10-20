@@ -1,12 +1,15 @@
+from typing import Tuple
+
 from db import SqlLiteClient
 from domain import (
     CompetitionResults,
     Contract,
     ContractInput,
     Participant,
+    PlayerScore,
     ValidationError,
     ValidationException,
-    WinnerReason,
+    WinReason,
 )
 from lodestone import LodestoneScraper
 
@@ -107,12 +110,37 @@ async def end_contract(discord_id: int):
     _db.delete_contract(discord_id)
 
 
+def find_winner(players: list[PlayerScore]) -> Tuple[PlayerScore | None, WinReason]:
+    if len(players) == 0:
+        return None, WinReason.NO_ELIGIBLE_PLAYERS
+
+    winner_score = max(player.seals_earned for player in players)
+    winners = [player for player in players if player.seals_earned == winner_score]
+
+    return winners[0], WinReason.HIGHEST_SEALS
+
+
 async def get_competition_results() -> CompetitionResults:
+    participants = _db.get_all_participants()
+    players = [p for p in participants if not p.is_coach]
+
+    scores = [
+        PlayerScore(
+            discord_id=player.discord_id,
+            first_name=player.first_name,
+            last_name=player.last_name,
+            seals_earned=0,  # Placeholder for actual seal calculation
+        )
+        for player in players
+    ]
+
+    competition_winner, competition_win_reason = find_winner(scores)
+
     return CompetitionResults(
-        player_scores=[],
-        competition_winner=None,
+        player_scores=players,
+        competition_winner=competition_winner,
         drawing_winner=None,
-        competition_winner_reason=WinnerReason.NO_ELIGIBLE_PLAYERS,
-        drawing_winner_reason=WinnerReason.NO_ELIGIBLE_PLAYERS,
+        competition_win_reason=competition_win_reason,
+        drawing_win_reason=WinReason.NO_ELIGIBLE_PLAYERS,
         completed_contracts=[],
     )

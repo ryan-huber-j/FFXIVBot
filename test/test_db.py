@@ -31,6 +31,24 @@ class TestParticipants(unittest.TestCase):
         result = self.db_client.get_participant("nonexistent_id")
         self.assertIsNone(result)
 
+    def test_get_all_participants(self):
+        participant1 = Participant(
+            discord_id=111111111, first_name="Alice", last_name="Wonder", is_coach=False
+        )
+        participant2 = Participant(
+            discord_id=222222222, first_name="Bob", last_name="Builder", is_coach=True
+        )
+        self.db_client.insert_participant(participant1)
+        self.db_client.insert_participant(participant2)
+        result = self.db_client.get_all_participants()
+        self.assertEqual(len(result), 2)
+        self.assertIn(participant1, result)
+        self.assertIn(participant2, result)
+
+    def test_should_return_empty_list_when_no_participants(self):
+        result = self.db_client.get_all_participants()
+        self.assertEqual(len(result), 0)
+
     def test_should_delete_participant(self):
         participant = Participant(
             discord_id=555555555, first_name="Test", last_name="User", is_coach=False

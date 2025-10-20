@@ -54,6 +54,16 @@ class SqlLiteClient:
         row = self.cursor.fetchone()
         return Participant(*row) if row else None
 
+    def get_all_participants(self) -> list[Participant]:
+        self.cursor.execute(
+            """
+            SELECT discord_id, first_name, last_name, is_coach
+            FROM participants
+            """
+        )
+        rows = self.cursor.fetchall()
+        return [Participant(*row) for row in rows]
+
     def delete_participant(self, discord_id: int) -> None:
         self.cursor.execute(
             """

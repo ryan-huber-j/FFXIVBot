@@ -1,7 +1,7 @@
 import unittest
 
 from commands import *
-from domain import WinnerReason
+from domain import WinReason
 
 tc = unittest.TestCase()
 contract_values = [300000, 420000, 500000, 800000, 1000000]
@@ -191,13 +191,32 @@ class TestGetCompetitionResults(unittest.IsolatedAsyncioTestCase):
         self.db = SqlLiteClient(":memory:")
         initialize(self.db, None)
 
+    def check_for_participant_in_results(self, results, participant):
+        for ps in results.player_scores:
+            if (
+                ps.discord_id == participant.discord_id
+                and ps.first_name == participant.first_name
+                and ps.last_name == participant.last_name
+            ):
+                return
+        self.fail(f"Participant {participant} not found in results.")
+
     async def test_should_return_no_results_when_no_competitors(self):
         results = await get_competition_results()
         self.assertEqual(results.player_scores, [])
         self.assertIsNone(results.competition_winner)
         self.assertIsNone(results.drawing_winner)
-        self.assertEqual(results.drawing_winner_reason, WinnerReason.NO_ELIGIBLE_PLAYERS)
-        self.assertEqual(
-            results.competition_winner_reason, WinnerReason.NO_ELIGIBLE_PLAYERS
-        )
+        self.assertEqual(results.drawing_win_reason, WinReason.NO_ELIGIBLE_PLAYERS)
+        self.assertEqual(results.competition_win_reason, WinReason.NO_ELIGIBLE_PLAYERS)
+        self.assertEqual(results.completed_contracts, [])
+
+    async def test_should_return_single_competitor_as_winner(self):
+        participant = default_participant()
+        self.db.insert_participant(participant)
+        results = await get_competition_results()
+        self.check_for_participant_in_results(results, participant)
+        self.assertIsNotNone(results.competition_winner)
+        self.assertEqual(results.competition_win_reason, WinReason.HIGHEST_SEALS)
+        self.assertIsNone(results.drawing_winner)
+        self.assertEqual(results.drawing_win_reason, WinReason.NO_ELIGIBLE_PLAYERS)
         self.assertEqual(results.completed_contracts, [])
