@@ -128,7 +128,7 @@ def find_competition_winner(
     return winners[0], WinReason.HIGHEST_SEALS
 
 
-def find_drawing_winner(participants: list[Participant]) -> Participant | None:
+def choose_random_drawing_winner(participants: list[PlayerScore]) -> PlayerScore | None:
     if len(participants) == 0:
         return None
     return participants[random.randint(0, len(participants) - 1)]

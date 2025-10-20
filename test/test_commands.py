@@ -44,6 +44,20 @@ def default_contract_input(
     )
 
 
+def default_player_score(
+    discord_id=default_discord_id,
+    first_name="Juhdu",
+    last_name="Khigbaa",
+    seals_earned=500000,
+) -> PlayerScore:
+    return PlayerScore(
+        discord_id=discord_id,
+        first_name=first_name,
+        last_name=last_name,
+        seals_earned=seals_earned,
+    )
+
+
 def assert_error(errors, field, message):
     tc.assertEqual(len(errors), 1)
     tc.assertEqual(errors[0].field, field)
@@ -218,20 +232,19 @@ class TestFindCompetitionWinner(unittest.TestCase):
 
 class TestFindDrawingWinner(unittest.TestCase):
     def test_no_players(self):
-        winner = find_drawing_winner([])
+        winner = choose_random_drawing_winner([])
         self.assertIsNone(winner)
 
     def test_single_player(self):
-        player = Participant(123, "Juhdu", "Khigbaa", False)
-        winner = find_drawing_winner([player])
+        player = default_player_score()
+        winner = choose_random_drawing_winner([player])
         self.assertEqual(winner, player)
 
     def test_multiple_players(self):
-        player1 = Participant(123, "Juhdu", "Khigbaa", False)
-        player2 = Participant(456, "Another", "Player", False)
-        player3 = Participant(789, "Third", "Gamer", False)
-        winner = find_drawing_winner([player1, player2, player3])
-        self.assertIsNotNone(winner)
+        player1 = default_player_score()
+        player2 = default_player_score(456, "Another", "Player", 600000)
+        player3 = default_player_score(789, "Third", "Player", 300000)
+        winner = choose_random_drawing_winner([player1, player2, player3])
         self.assertIn(winner, [player1, player2, player3])
 
 
