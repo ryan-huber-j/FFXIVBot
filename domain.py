@@ -16,6 +16,24 @@ class ValidationException(Exception):
         )
 
 
+class FCMember(NamedTuple):
+    id: str
+    name: str
+    rank: str
+
+
+class GrandCompanyRanking(NamedTuple):
+    character_id: str
+    character_name: str
+    rank: int
+    seals: int
+
+
+class FreeCompany(NamedTuple):
+    id: str
+    name: str
+
+
 class Participant(NamedTuple):
     discord_id: int
     first_name: str

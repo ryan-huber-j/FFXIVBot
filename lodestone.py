@@ -2,29 +2,12 @@ import re
 
 from bs4 import BeautifulSoup
 import requests
-from typing_extensions import NamedTuple
+
+from domain import FCMember, FreeCompany, GrandCompanyRanking
 
 _page_number_regex = re.compile("Page \d of (\d)")
 _character_link_regex = re.compile("/lodestone/character/(.+)/")
 _fc_link_regex = re.compile("/lodestone/freecompany/(.+)/")
-
-
-class FCMember(NamedTuple):
-    id: str
-    name: str
-    rank: str
-
-
-class GrandCompanyRanking(NamedTuple):
-    character_id: str
-    character_name: str
-    rank: int
-    seals: int
-
-
-class FreeCompany(NamedTuple):
-    id: str
-    name: str
 
 
 class LodestoneScraperException(Exception):

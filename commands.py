@@ -7,6 +7,7 @@ from domain import (
     CompetitionResults,
     Contract,
     ContractInput,
+    FCMember,
     Participant,
     PlayerScore,
     ValidationError,
@@ -112,6 +113,18 @@ async def end_contract(discord_id: int):
     _db.delete_contract(discord_id)
 
 
+def map_ffxiv_ids_to_participants(
+    members: list[FCMember], participants: list[Participant]
+) -> dict[str, Participant]:
+    mapping = {}
+    for participant in participants:
+        name = f"{participant.first_name} {participant.last_name}"
+        member = next((m for m in members if m.name == name), None)
+        if member is not None:
+            mapping[member.ffxiv_id] = participant
+    return mapping
+
+
 def find_competition_winner(
     players: list[PlayerScore],
 ) -> Tuple[PlayerScore | None, WinReason]:
@@ -129,9 +142,11 @@ def find_competition_winner(
 
 
 def choose_random_drawing_winner(participants: list[PlayerScore]) -> PlayerScore | None:
-    if len(participants) == 0:
-        return None
-    return participants[random.randint(0, len(participants) - 1)]
+    return (
+        None
+        if len(participants) == 0
+        else participants[random.randint(0, len(participants) - 1)]
+    )
 
 
 async def get_competition_results() -> CompetitionResults:
