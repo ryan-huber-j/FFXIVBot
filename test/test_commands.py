@@ -186,6 +186,55 @@ class TestCreateContract(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(stored_contract)
 
 
+class TestFindCompetitionWinner(unittest.TestCase):
+    def test_no_players(self):
+        winner, reason = find_competition_winner([])
+        self.assertIsNone(winner)
+        self.assertEqual(reason, WinReason.NO_ELIGIBLE_PLAYERS)
+
+    def test_single_player(self):
+        player = PlayerScore(123, "Juhdu", "Khigbaa", 500000)
+        winner, reason = find_competition_winner([player])
+        self.assertEqual(winner, player)
+        self.assertEqual(reason, WinReason.HIGHEST_SEALS)
+
+    def test_multiple_players_highest_seals(self):
+        player1 = PlayerScore(123, "Juhdu", "Khigbaa", 500000)
+        player2 = PlayerScore(456, "Another", "Player", 800000)
+        player3 = PlayerScore(789, "Third", "Gamer", 300000)
+        winner, reason = find_competition_winner([player1, player2, player3])
+        self.assertEqual(winner, player2)
+        self.assertEqual(reason, WinReason.HIGHEST_SEALS)
+
+    def test_tie_breaker(self):
+        player1 = PlayerScore(123, "Juhdu", "Khigbaa", 800000)
+        player2 = PlayerScore(456, "Another", "Player", 800000)
+        player3 = PlayerScore(789, "Third", "Gamer", 300000)
+        winner, reason = find_competition_winner([player1, player2, player3])
+        self.assertIsNotNone(winner)
+        self.assertIn(winner, [player1, player2])
+        self.assertEqual(reason, WinReason.TIE_BREAKER)
+
+
+class TestFindDrawingWinner(unittest.TestCase):
+    def test_no_players(self):
+        winner = find_drawing_winner([])
+        self.assertIsNone(winner)
+
+    def test_single_player(self):
+        player = Participant(123, "Juhdu", "Khigbaa", False)
+        winner = find_drawing_winner([player])
+        self.assertEqual(winner, player)
+
+    def test_multiple_players(self):
+        player1 = Participant(123, "Juhdu", "Khigbaa", False)
+        player2 = Participant(456, "Another", "Player", False)
+        player3 = Participant(789, "Third", "Gamer", False)
+        winner = find_drawing_winner([player1, player2, player3])
+        self.assertIsNotNone(winner)
+        self.assertIn(winner, [player1, player2, player3])
+
+
 class TestGetCompetitionResults(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.db = SqlLiteClient(":memory:")

@@ -1,3 +1,5 @@
+from operator import iand
+import random
 from typing import Tuple
 
 from db import SqlLiteClient
@@ -110,14 +112,26 @@ async def end_contract(discord_id: int):
     _db.delete_contract(discord_id)
 
 
-def find_winner(players: list[PlayerScore]) -> Tuple[PlayerScore | None, WinReason]:
+def find_competition_winner(
+    players: list[PlayerScore],
+) -> Tuple[PlayerScore | None, WinReason]:
     if len(players) == 0:
         return None, WinReason.NO_ELIGIBLE_PLAYERS
 
     winner_score = max(player.seals_earned for player in players)
     winners = [player for player in players if player.seals_earned == winner_score]
 
+    if len(winners) > 1:
+        choice = random.randint(0, len(winners) - 1)
+        return winners[choice], WinReason.TIE_BREAKER
+
     return winners[0], WinReason.HIGHEST_SEALS
+
+
+def find_drawing_winner(participants: list[Participant]) -> Participant | None:
+    if len(participants) == 0:
+        return None
+    return participants[random.randint(0, len(participants) - 1)]
 
 
 async def get_competition_results() -> CompetitionResults:
@@ -134,7 +148,7 @@ async def get_competition_results() -> CompetitionResults:
         for player in players
     ]
 
-    competition_winner, competition_win_reason = find_winner(scores)
+    competition_winner, competition_win_reason = find_competition_winner(scores)
 
     return CompetitionResults(
         player_scores=players,
