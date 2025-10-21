@@ -1,6 +1,6 @@
 from operator import iand
 import random
-from typing import Tuple
+from typing import Iterable, Tuple
 
 from db import SqlLiteClient
 from domain import (
@@ -8,6 +8,7 @@ from domain import (
     Contract,
     ContractInput,
     FCMember,
+    GrandCompanyRanking,
     Participant,
     PlayerScore,
     ValidationError,
@@ -15,6 +16,9 @@ from domain import (
     WinReason,
 )
 from lodestone import LodestoneScraper
+
+FREE_COMPANY_ID = "9231394073691073564"
+WORLD = "Siren"
 
 _db = None
 _lodestone = None
@@ -113,16 +117,28 @@ async def end_contract(discord_id: int):
     _db.delete_contract(discord_id)
 
 
-def map_ffxiv_ids_to_participants(
-    members: list[FCMember], participants: list[Participant]
-) -> dict[str, Participant]:
-    mapping = {}
+def assemble_eligible_player_scores(
+    fc_members: list[FCMember],
+    participants: list[Participant],
+    gc_rankings: list[GrandCompanyRanking],
+) -> list[PlayerScore]:
+    player_scores = []
     for participant in participants:
         name = f"{participant.first_name} {participant.last_name}"
-        member = next((m for m in members if m.name == name), None)
-        if member is not None:
-            mapping[member.ffxiv_id] = participant
-    return mapping
+        member = next((m for m in fc_members if m.name == name), None)
+        if member is None:
+            continue
+        ranking = next(r for r in gc_rankings if r.character_id == member.ffxiv_id)
+        player_scores.append(
+            PlayerScore(
+                discord_id=participant.discord_id,
+                first_name=participant.first_name,
+                last_name=participant.last_name,
+                seals_earned=ranking.seals,
+                is_coach=participant.is_coach,
+            )
+        )
+    return player_scores
 
 
 def find_competition_winner(
@@ -151,25 +167,28 @@ def choose_random_drawing_winner(participants: list[PlayerScore]) -> PlayerScore
 
 async def get_competition_results() -> CompetitionResults:
     participants = _db.get_all_participants()
-    players = [p for p in participants if not p.is_coach]
+    fc_members = _lodestone.get_free_company_members(FREE_COMPANY_ID)
+    gc_rankings = _lodestone.get_grand_company_rankings(WORLD)
+    players = assemble_eligible_player_scores(fc_members, participants, gc_rankings)
 
-    scores = [
-        PlayerScore(
-            discord_id=player.discord_id,
-            first_name=player.first_name,
-            last_name=player.last_name,
-            seals_earned=0,  # Placeholder for actual seal calculation
-        )
-        for player in players
+    eligible_players = [p for p in players if not p.is_coach]
+    competition_winner, competition_win_reason = find_competition_winner(eligible_players)
+
+    eligible_for_drawing = [
+        p for p in eligible_players if p.discord_id != competition_winner.discord_id
     ]
-
-    competition_winner, competition_win_reason = find_competition_winner(scores)
+    drawing_winner = choose_random_drawing_winner(eligible_for_drawing)
+    drawing_win_reason = (
+        WinReason.RANDOM_DRAWING
+        if drawing_winner is not None
+        else WinReason.NO_ELIGIBLE_PLAYERS
+    )
 
     return CompetitionResults(
         player_scores=players,
         competition_winner=competition_winner,
-        drawing_winner=None,
+        drawing_winner=drawing_winner,
         competition_win_reason=competition_win_reason,
-        drawing_win_reason=WinReason.NO_ELIGIBLE_PLAYERS,
+        drawing_win_reason=drawing_win_reason,
         completed_contracts=[],
     )

@@ -5,7 +5,7 @@ from lodestone import GrandCompanyRanking
 
 def fake_member_entry(member):
     return f"""
-    <li class="entry"><a href="/lodestone/character/{member.id}/" class="entry__bg">
+    <li class="entry"><a href="/lodestone/character/{member.ffxiv_id}/" class="entry__bg">
       <div class="entry__flex">
         <div class="entry__freecompany__center"><p class="entry__name">{member.name}</p>
           <ul class="entry__freecompany__info">

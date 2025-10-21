@@ -68,7 +68,7 @@ async def create_contract(
 def get_fc_member_ids() -> list[str]:
     scraper = LodestoneScraper("https://na.finalfantasyxiv.com")
     fc_members = scraper.get_free_company_members("9231394073691073564")
-    return [member.id for member in fc_members]
+    return [member.ffxiv_id for member in fc_members]
 
 
 @tree.command(

@@ -17,7 +17,7 @@ class ValidationException(Exception):
 
 
 class FCMember(NamedTuple):
-    id: str
+    ffxiv_id: str
     name: str
     rank: str
 
@@ -59,12 +59,14 @@ class PlayerScore(NamedTuple):
     first_name: str
     last_name: str
     seals_earned: int
+    is_coach: bool = False
 
 
 class WinReason(Enum):
     HIGHEST_SEALS = 1
     TIE_BREAKER = 2
     NO_ELIGIBLE_PLAYERS = 3
+    RANDOM_DRAWING = 4
 
 
 class CompletedContract(NamedTuple):

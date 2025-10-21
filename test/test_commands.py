@@ -1,11 +1,17 @@
+from test.request_mocking import mock_fc_members_response, mock_gc_rankings_response
 import unittest
 
+import responses
+
 from commands import *
-from domain import WinReason
+from domain import GrandCompanyRanking, WinReason
 
 tc = unittest.TestCase()
 contract_values = [300000, 420000, 500000, 800000, 1000000]
 default_discord_id = 123456789012345678
+default_name = "Juhdu Khigbaa"
+default_first_name = "Juhdu"
+default_last_name = "Khigbaa"
 
 
 def default_contract(
@@ -19,7 +25,10 @@ def default_contract(
 
 
 def default_participant(
-    discord_id=default_discord_id, first_name="Juhdu", last_name="Khigbaa", is_coach=False
+    discord_id=default_discord_id,
+    first_name=default_first_name,
+    last_name=default_last_name,
+    is_coach=False,
 ) -> Participant:
     return Participant(
         discord_id=discord_id,
@@ -31,8 +40,8 @@ def default_participant(
 
 def default_contract_input(
     discord_id=default_discord_id,
-    first_name="Juhdu",
-    last_name="Khigbaa",
+    first_name=default_first_name,
+    last_name=default_last_name,
     amount=500000,
 ) -> ContractInput:
     return ContractInput(
@@ -46,8 +55,8 @@ def default_contract_input(
 
 def default_player_score(
     discord_id=default_discord_id,
-    first_name="Juhdu",
-    last_name="Khigbaa",
+    first_name=default_first_name,
+    last_name=default_last_name,
     seals_earned=500000,
 ) -> PlayerScore:
     return PlayerScore(
@@ -207,22 +216,22 @@ class TestFindCompetitionWinner(unittest.TestCase):
         self.assertEqual(reason, WinReason.NO_ELIGIBLE_PLAYERS)
 
     def test_single_player(self):
-        player = PlayerScore(123, "Juhdu", "Khigbaa", 500000)
+        player = default_player_score()
         winner, reason = find_competition_winner([player])
         self.assertEqual(winner, player)
         self.assertEqual(reason, WinReason.HIGHEST_SEALS)
 
     def test_multiple_players_highest_seals(self):
-        player1 = PlayerScore(123, "Juhdu", "Khigbaa", 500000)
+        player1 = default_player_score()
         player2 = PlayerScore(456, "Another", "Player", 800000)
-        player3 = PlayerScore(789, "Third", "Gamer", 300000)
+        player3 = PlayerScore(789, "Third", "Player", 300000)
         winner, reason = find_competition_winner([player1, player2, player3])
         self.assertEqual(winner, player2)
         self.assertEqual(reason, WinReason.HIGHEST_SEALS)
 
     def test_tie_breaker(self):
-        player1 = PlayerScore(123, "Juhdu", "Khigbaa", 800000)
-        player2 = PlayerScore(456, "Another", "Player", 800000)
+        player1 = default_player_score()
+        player2 = PlayerScore(456, "Another", "Player", 500000)
         player3 = PlayerScore(789, "Third", "Gamer", 300000)
         winner, reason = find_competition_winner([player1, player2, player3])
         self.assertIsNotNone(winner)
@@ -249,9 +258,50 @@ class TestFindDrawingWinner(unittest.TestCase):
 
 
 class TestGetCompetitionResults(unittest.IsolatedAsyncioTestCase):
+    HOSTNAME = "fake.lodestone.test"
+    BASE_URL = f"https://{HOSTNAME}"
+
     def setUp(self):
         self.db = SqlLiteClient(":memory:")
-        initialize(self.db, None)
+        self.lodestone = LodestoneScraper(self.BASE_URL)
+        initialize(self.db, self.lodestone)
+
+    def mock_player_fc_listings(self, players, ffxiv_ids):
+        fc_members = [
+            FCMember(
+                ffxiv_id=ffxiv_id,
+                name=f"{player.first_name} {player.last_name}",
+                rank="Member",
+            )
+            for player, ffxiv_id in zip(players, ffxiv_ids)
+        ]
+        return mock_fc_members_response(
+            self.HOSTNAME, 200, FREE_COMPANY_ID, members=fc_members
+        )
+
+    def mock_player_gc_rankings(self, players, ffxiv_ids, rankings, seals):
+        gc_rankings = [
+            GrandCompanyRanking(
+                character_id=id,
+                character_name=f"{player.first_name} {player.last_name}",
+                rank=ranking,
+                seals=seals,
+            )
+            for player, id, ranking, seals in zip(players, ffxiv_ids, rankings, seals)
+        ]
+
+        return [
+            mock_gc_rankings_response(self.HOSTNAME, 200, "Siren", gc_rankings, 1),
+            mock_gc_rankings_response(self.HOSTNAME, 200, "Siren", [], 2),
+            mock_gc_rankings_response(self.HOSTNAME, 200, "Siren", [], 3),
+            mock_gc_rankings_response(self.HOSTNAME, 200, "Siren", [], 4),
+            mock_gc_rankings_response(self.HOSTNAME, 200, "Siren", [], 5),
+        ]
+
+    def compare_player_with_score(self, participant, player_score):
+        self.assertEqual(participant.discord_id, player_score.discord_id)
+        self.assertEqual(participant.first_name, player_score.first_name)
+        self.assertEqual(participant.last_name, player_score.last_name)
 
     def check_for_participant_in_results(self, results, participant):
         for ps in results.player_scores:
@@ -263,7 +313,21 @@ class TestGetCompetitionResults(unittest.IsolatedAsyncioTestCase):
                 return
         self.fail(f"Participant {participant} not found in results.")
 
+    @responses.activate
     async def test_should_return_no_results_when_no_competitors(self):
+        participant = default_participant()
+        fc_response = self.mock_player_fc_listings([participant], ["123"])
+        gc_responses = self.mock_player_gc_rankings(
+            [],
+            [],
+            [],
+            [],
+        )
+
+        responses.add(fc_response)
+        for gcr in gc_responses:
+            responses.add(gcr)
+
         results = await get_competition_results()
         self.assertEqual(results.player_scores, [])
         self.assertIsNone(results.competition_winner)
@@ -272,13 +336,57 @@ class TestGetCompetitionResults(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(results.competition_win_reason, WinReason.NO_ELIGIBLE_PLAYERS)
         self.assertEqual(results.completed_contracts, [])
 
+    @responses.activate
     async def test_should_return_single_competitor_as_winner(self):
         participant = default_participant()
+        fc_response = self.mock_player_fc_listings([participant], ["123"])
+        gc_responses = self.mock_player_gc_rankings(
+            [participant],
+            ["123"],
+            [1],
+            [500000],
+        )
+
+        responses.add(fc_response)
+
+        for gcr in gc_responses:
+            responses.add(gcr)
+
         self.db.insert_participant(participant)
         results = await get_competition_results()
         self.check_for_participant_in_results(results, participant)
-        self.assertIsNotNone(results.competition_winner)
+        self.compare_player_with_score(participant, results.player_scores[0])
         self.assertEqual(results.competition_win_reason, WinReason.HIGHEST_SEALS)
         self.assertIsNone(results.drawing_winner)
         self.assertEqual(results.drawing_win_reason, WinReason.NO_ELIGIBLE_PLAYERS)
         self.assertEqual(results.completed_contracts, [])
+
+    @responses.activate
+    async def test_should_assign_two_competitors_correctly(self):
+        participant1 = default_participant()
+        participant2 = default_participant(
+            discord_id=987654321098765432, first_name="Another", last_name="Player"
+        )
+        fc_response = self.mock_player_fc_listings(
+            [participant1, participant2], ["123", "456"]
+        )
+        gc_responses = self.mock_player_gc_rankings(
+            [participant1, participant2],
+            ["123", "456"],
+            [1, 2],
+            [500000, 300000],
+        )
+
+        responses.add(fc_response)
+        for gcr in gc_responses:
+            responses.add(gcr)
+
+        self.db.insert_participant(participant1)
+        self.db.insert_participant(participant2)
+        results = await get_competition_results()
+        self.check_for_participant_in_results(results, participant1)
+        self.check_for_participant_in_results(results, participant2)
+        self.compare_player_with_score(participant1, results.competition_winner)
+        self.assertEqual(results.competition_win_reason, WinReason.HIGHEST_SEALS)
+        self.compare_player_with_score(participant2, results.drawing_winner)
+        self.assertEqual(results.drawing_win_reason, WinReason.RANDOM_DRAWING)
