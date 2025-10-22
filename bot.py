@@ -42,7 +42,7 @@ async def on_ready():
 
 def present_validation_errors(ve: commands.ValidationException) -> str:
     lines = "\n".join([f" - **{field}:** {message}" for field, message in ve.errors])
-    return textwrap.dedent(f"The following fields were invalid:{lines}")
+    return textwrap.dedent(f"One or more fields were invalid:{lines}")
 
 
 @tree.command(
@@ -77,9 +77,7 @@ async def create_contract(
             f" to earn {amount} seals per week."
         )
     except commands.ValidationException as ve:
-        await interaction.response.send_message(
-            f"One or more of the fields in your contract were invalid:\n{present_validation_errors(ve)}"
-        )
+        await interaction.response.send_message(present_validation_errors(ve))
     except Exception as e:
         await interaction.response.send_message(f"Failed to create contract: {e}")
         raise e
