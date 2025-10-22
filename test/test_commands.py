@@ -4,7 +4,7 @@ import unittest
 import responses
 
 from commands import *
-from domain import GrandCompanyRanking, WinReason
+from domain import GrandCompanyRanking, HonorableMention, WinReason
 
 tc = unittest.TestCase()
 contract_values = [300000, 420000, 500000, 800000, 1000000]
@@ -267,7 +267,7 @@ class TestGetCompetitionResults(unittest.IsolatedAsyncioTestCase):
         self.lodestone = LodestoneScraper(self.BASE_URL)
         initialize(self.db, self.lodestone)
 
-    def setup_players(self, ffxiv_ids_to_players):
+    def setup_players(self, ffxiv_ids_to_players, ffxiv_ids_to_honorable_mentions={}):
         for _, player in ffxiv_ids_to_players.items():
             self.db.insert_participant(
                 Participant(
@@ -285,7 +285,21 @@ class TestGetCompetitionResults(unittest.IsolatedAsyncioTestCase):
                 rank="Member",
             )
             for id, player in ffxiv_ids_to_players.items()
+        ] + [
+            FCMember(
+                ffxiv_id=id,
+                name=f"{hm.first_name} {hm.last_name}",
+                rank="Member",
+            )
+            for id, hm in ffxiv_ids_to_honorable_mentions.items()
         ]
+
+        responses.add(
+            mock_fc_members_response(
+                self.HOSTNAME, 200, FREE_COMPANY_ID, members=fc_members
+            )
+        )
+
         gc_rankings = [
             GrandCompanyRanking(
                 character_id=id,
@@ -294,11 +308,16 @@ class TestGetCompetitionResults(unittest.IsolatedAsyncioTestCase):
                 seals=player.seals_earned,
             )
             for id, player in ffxiv_ids_to_players.items()
+        ] + [
+            GrandCompanyRanking(
+                character_id=id,
+                character_name=f"{hm.first_name} {hm.last_name}",
+                rank=hm.rank,
+                seals=hm.seals_earned,
+            )
+            for id, hm in ffxiv_ids_to_honorable_mentions.items()
         ]
 
-        fc_response = mock_fc_members_response(
-            self.HOSTNAME, 200, FREE_COMPANY_ID, members=fc_members
-        )
         gc_responses = [
             mock_gc_rankings_response(self.HOSTNAME, 200, "Siren", gc_rankings, 1),
             mock_gc_rankings_response(self.HOSTNAME, 200, "Siren", [], 2),
@@ -307,7 +326,6 @@ class TestGetCompetitionResults(unittest.IsolatedAsyncioTestCase):
             mock_gc_rankings_response(self.HOSTNAME, 200, "Siren", [], 5),
         ]
 
-        responses.add(fc_response)
         for gc_response in gc_responses:
             responses.add(gc_response)
 
@@ -353,3 +371,22 @@ class TestGetCompetitionResults(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(results.competition_win_reason, WinReason.HIGHEST_SEALS)
         self.assertEqual(results.drawing_winner, player2)
         self.assertEqual(results.drawing_win_reason, WinReason.RANDOM_DRAWING)
+
+    @responses.activate
+    async def test_should_award_honorable_mentions(self):
+        player = default_player_score()
+        honorable_mention = HonorableMention(
+            first_name="Honorable",
+            last_name="Mention",
+            rank=10,
+            seals_earned=250000,
+        )
+        self.setup_players({"123": player}, {"honorable1": honorable_mention})
+
+        results = await get_competition_results()
+        self.assertIn(player, results.player_scores)
+        self.assertEqual(results.competition_winner, player)
+        self.assertEqual(results.competition_win_reason, WinReason.HIGHEST_SEALS)
+        self.assertIsNone(results.drawing_winner)
+        self.assertEqual(results.drawing_win_reason, WinReason.NO_ELIGIBLE_PLAYERS)
+        self.assertEqual(results.honorable_mentions, [honorable_mention])

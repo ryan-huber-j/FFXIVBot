@@ -1,6 +1,5 @@
 from operator import iand
 import random
-from typing import Iterable, Tuple
 
 from db import SqlLiteClient
 from domain import (
@@ -9,6 +8,7 @@ from domain import (
     ContractInput,
     FCMember,
     GrandCompanyRanking,
+    HonorableMention,
     Participant,
     PlayerScore,
     ValidationError,
@@ -117,33 +117,56 @@ async def end_contract(discord_id: int):
     _db.delete_contract(discord_id)
 
 
-def assemble_eligible_player_scores(
+def score_players_and_honorable_mentions(
     fc_members: list[FCMember],
     participants: list[Participant],
     gc_rankings: list[GrandCompanyRanking],
-) -> list[PlayerScore]:
+) -> tuple[list[PlayerScore], list[HonorableMention]]:
     player_scores = []
-    for participant in participants:
-        name = f"{participant.first_name} {participant.last_name}"
-        member = next((m for m in fc_members if m.name == name), None)
-        if member is None:
+    honorable_mentions = []
+
+    id_to_ranking = {gcr.character_id: gcr for gcr in gc_rankings}
+    for member in fc_members:
+        ranking = id_to_ranking.get(member.ffxiv_id)
+        if ranking is None:
             continue
-        ranking = next(r for r in gc_rankings if r.character_id == member.ffxiv_id)
-        player_scores.append(
-            PlayerScore(
-                discord_id=participant.discord_id,
-                first_name=participant.first_name,
-                last_name=participant.last_name,
-                seals_earned=ranking.seals,
-                is_coach=participant.is_coach,
-            )
+
+        first_name, last_name = member.name.split(" ")
+
+        participant = next(
+            (
+                p
+                for p in participants
+                if p.first_name == first_name and p.last_name == last_name
+            ),
+            None,
         )
-    return player_scores
+        if participant is not None:
+            player_scores.append(
+                PlayerScore(
+                    discord_id=participant.discord_id,
+                    first_name=participant.first_name,
+                    last_name=participant.last_name,
+                    seals_earned=ranking.seals,
+                    is_coach=participant.is_coach,
+                )
+            )
+        else:
+            honorable_mentions.append(
+                HonorableMention(
+                    first_name=member.name.split(" ")[0],
+                    last_name=" ".join(member.name.split(" ")[1:]),
+                    rank=ranking.rank,
+                    seals_earned=ranking.seals,
+                )
+            )
+
+    return player_scores, honorable_mentions
 
 
 def find_competition_winner(
     players: list[PlayerScore],
-) -> Tuple[PlayerScore | None, WinReason]:
+) -> tuple[PlayerScore | None, WinReason]:
     if len(players) == 0:
         return None, WinReason.NO_ELIGIBLE_PLAYERS
 
@@ -169,7 +192,9 @@ async def get_competition_results() -> CompetitionResults:
     participants = _db.get_all_participants()
     fc_members = _lodestone.get_free_company_members(FREE_COMPANY_ID)
     gc_rankings = _lodestone.get_grand_company_rankings(WORLD)
-    players = assemble_eligible_player_scores(fc_members, participants, gc_rankings)
+    players, honorable_mentions = score_players_and_honorable_mentions(
+        fc_members, participants, gc_rankings
+    )
 
     eligible_players = [p for p in players if not p.is_coach]
     competition_winner, competition_win_reason = find_competition_winner(eligible_players)
@@ -191,4 +216,5 @@ async def get_competition_results() -> CompetitionResults:
         competition_win_reason=competition_win_reason,
         drawing_win_reason=drawing_win_reason,
         completed_contracts=[],
+        honorable_mentions=honorable_mentions,
     )

@@ -78,6 +78,13 @@ class CompletedContract(NamedTuple):
     payout: int
 
 
+class HonorableMention(NamedTuple):
+    first_name: str
+    last_name: str
+    rank: int
+    seals_earned: int
+
+
 class CompetitionResults(NamedTuple):
     player_scores: list[PlayerScore]
     competition_winner: PlayerScore | None
@@ -85,3 +92,4 @@ class CompetitionResults(NamedTuple):
     competition_win_reason: WinReason
     drawing_win_reason: WinReason
     completed_contracts: list[CompletedContract]
+    honorable_mentions: list[HonorableMention]
