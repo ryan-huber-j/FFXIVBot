@@ -150,3 +150,6 @@ fabric.properties
 
 # VSCode
 .vscode
+
+# SQLLite data file
+data.db

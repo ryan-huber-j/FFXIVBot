@@ -1,5 +1,6 @@
 import os
 import string
+import textwrap
 from typing import NamedTuple
 
 from bs4 import BeautifulSoup
@@ -9,6 +10,7 @@ from dotenv import load_dotenv
 import requests
 
 import commands
+from db import SqlLiteClient
 from domain import ContractInput
 from lodestone import LodestoneScraper
 
@@ -26,6 +28,9 @@ guild = discord.Object(id=int(os.getenv("GUILD_ID")))
 
 
 def run_bot(discord_token):
+    commands.initialize(
+        SqlLiteClient(), LodestoneScraper("https://na.finalfantasyxiv.com")
+    )
     client.run(discord_token)
 
 
@@ -33,6 +38,11 @@ def run_bot(discord_token):
 async def on_ready():
     print(f"The bot has connected to Discord!")
     await tree.sync(guild=guild)
+
+
+def present_validation_errors(ve: commands.ValidationException) -> str:
+    lines = "\n".join([f" - **{field}:** {message}" for field, message in ve.errors])
+    return textwrap.dedent(f"The following fields were invalid:{lines}")
 
 
 @tree.command(
@@ -51,6 +61,7 @@ async def create_contract(
     character_last_name: str,
     amount: int,
 ) -> None:
+
     contract_input = ContractInput(
         discord_id=interaction.user.id,
         first_name=character_first_name,
@@ -58,11 +69,20 @@ async def create_contract(
         amount=amount,
         contract_amounts=[300000, 420000, 500000, 800000, 1000000],
     )
-    await commands.create_contract(contract_input)
-    await interaction.response.send_message(
-        f"Contract created for {character_first_name} {character_last_name}"
-        "to earn {amount} seals this week!"
-    )
+
+    try:
+        await commands.create_contract(contract_input)
+        await interaction.response.send_message(
+            f"Contract created for {character_first_name} {character_last_name}"
+            f" to earn {amount} seals per week."
+        )
+    except commands.ValidationException as ve:
+        await interaction.response.send_message(
+            f"One or more of the fields in your contract were invalid:\n{present_validation_errors(ve)}"
+        )
+    except Exception as e:
+        await interaction.response.send_message(f"Failed to create contract: {e}")
+        raise e
 
 
 def get_fc_member_ids() -> list[str]:
@@ -171,7 +191,7 @@ async def get_results(interaction: discord.Interaction):
     message_parts = [
         "✅ Participants\nNote: "
         "Italicized means that the participant was a coach, not competing for contest prizes."
-        ' Ranks Labeled "???" were less than the server-wide top 500 or unlisted at all.\n',
+        " Ranks Labeled '???' were less than the server-wide top 500 or unlisted at all.\n",
         participant_list.strip(),
         "\n🛂 Coaches",
         coach_list.strip(),
@@ -189,7 +209,7 @@ async def get_results(interaction: discord.Interaction):
             ).id
         except StopIteration:
             await interaction.followup.send(
-                f'A winner, "{winner.name}" was found, but I was unable to find their name in Discord to mention them. Please verify that their nickname matches their character name.'
+                f"A winner, {winner.name} was found, but I was unable to find their name in Discord to mention them. Please verify that their nickname matches their character name."
             )
             return
 
