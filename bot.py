@@ -72,15 +72,17 @@ async def create_contract(
 
     try:
         await commands.create_contract(contract_input)
-        await interaction.response.send_message(
-            f"Contract created for {character_first_name} {character_last_name}"
-            f" to earn {amount} seals per week."
-        )
     except commands.ValidationException as ve:
         await interaction.response.send_message(present_validation_errors(ve))
     except Exception as e:
         await interaction.response.send_message(f"Failed to create contract: {e}")
         raise e
+
+    msg = (
+        f"Contract created for {character_first_name} {character_last_name} to "
+        f"earn {amount} seals per week."
+    )
+    await interaction.response.send_message(msg)
 
 
 def get_fc_member_ids() -> list[str]:
