@@ -9,10 +9,11 @@ from discord import app_commands
 from dotenv import load_dotenv
 import requests
 
-import commands
 from db import SqlLiteClient
+import domain
 from domain import ContractInput
 from lodestone import LodestoneScraper
+import professionals
 
 DUPLICATION_EXPLANATION = " *Note: Defaulted to highest rank listed and combined score between two ranks earned*"
 WINNER_MESSAGE = " WINNER"
@@ -28,7 +29,7 @@ guild = discord.Object(id=int(os.getenv("GUILD_ID")))
 
 
 def run_bot(discord_token):
-    commands.initialize(
+    professionals.initialize(
         SqlLiteClient(), LodestoneScraper("https://na.finalfantasyxiv.com")
     )
     client.run(discord_token)
@@ -40,9 +41,9 @@ async def on_ready():
     await tree.sync(guild=guild)
 
 
-def present_validation_errors(ve: commands.ValidationException) -> str:
-    lines = "\n".join([f" - **{field}:** {message}" for field, message in ve.errors])
-    return textwrap.dedent(f"One or more fields were invalid:{lines}")
+def present_validation_errors(ve: professionals.ValidationException) -> str:
+    lines = "\n".join([f"**{field}:** {message}" for field, message in ve.errors])
+    return textwrap.dedent(f"One or more fields were invalid:\n{lines}")
 
 
 @tree.command(
@@ -61,6 +62,7 @@ async def create_contract(
     character_last_name: str,
     amount: int,
 ) -> None:
+    await interaction.response.defer(ephemeral=True, thinking=True)
 
     contract_input = ContractInput(
         discord_id=interaction.user.id,
@@ -71,18 +73,19 @@ async def create_contract(
     )
 
     try:
-        await commands.create_contract(contract_input)
-    except commands.ValidationException as ve:
-        await interaction.response.send_message(present_validation_errors(ve))
+        await professionals.create_contract(contract_input)
+    except domain.ValidationException as ve:
+        await interaction.followup.send(present_validation_errors(ve))
+        return
     except Exception as e:
-        await interaction.response.send_message(f"Failed to create contract: {e}")
+        await interaction.followup.send(f"Failed to create contract: {e}")
         raise e
 
     msg = (
         f"Contract created for {character_first_name} {character_last_name} to "
         f"earn {amount} seals per week."
     )
-    await interaction.response.send_message(msg)
+    await interaction.followup.send(msg)
 
 
 def get_fc_member_ids() -> list[str]:
