@@ -265,7 +265,7 @@ class TestGetCompetitionResults(unittest.IsolatedAsyncioTestCase):
 
     def setup_players(self, ffxiv_ids_to_players, ffxiv_ids_to_honorable_mentions={}):
         for _, player in ffxiv_ids_to_players.items():
-            self.db.insert_participant(
+            self.db.upsert_participant(
                 Participant(
                     discord_id=player.discord_id,
                     first_name=player.first_name,

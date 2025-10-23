@@ -62,7 +62,7 @@ async def participate_as_player(discord_id: int, first_name: str, last_name: str
     )
     if len(errors := validate_participant(participant)) > 0:
         raise ValidationException(errors)
-    _db.insert_participant(participant)
+    _db.upsert_participant(participant)
 
 
 async def participate_as_coach(discord_id: int, first_name: str, last_name: str):
@@ -74,7 +74,7 @@ async def participate_as_coach(discord_id: int, first_name: str, last_name: str)
     )
     if len(errors := validate_participant(participant)) > 0:
         raise ValidationException(errors)
-    _db.insert_participant(participant)
+    _db.upsert_participant(participant)
 
 
 async def end_participation(discord_id: int):
@@ -99,7 +99,7 @@ async def create_contract(input: ContractInput):
     if len(validation_errors) > 0:
         raise ValidationException(validation_errors)
 
-    _db.insert_contract(contract)
+    _db.upsert_contract(contract)
 
 
 async def end_contract(discord_id: int):

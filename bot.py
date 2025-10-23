@@ -58,9 +58,9 @@ def present_validation_errors(ve: professionals.ValidationException) -> str:
 )
 async def create_contract(
     interaction: discord.Interaction,
+    amount: int,
     character_first_name: str,
     character_last_name: str,
-    amount: int,
 ) -> None:
     await interaction.response.defer(ephemeral=True, thinking=True)
 
