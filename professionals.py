@@ -85,6 +85,13 @@ async def end_participation(discord_id: int):
 
 
 async def create_contract(input: ContractInput):
+    existing_participant = _db.get_participant(input.discord_id)
+    if existing_participant is not None and existing_participant.is_coach:
+        raise ProfessionalsException(
+            log_message=f"User {input.discord_id} attempted to create a contract but is a coach.",
+            user_message="Coaches may not create contracts.",
+        )
+
     participant = Participant(
         discord_id=input.discord_id,
         first_name=input.first_name,
@@ -99,6 +106,7 @@ async def create_contract(input: ContractInput):
     if len(validation_errors) > 0:
         raise ValidationException(validation_errors)
 
+    _db.upsert_participant(participant)
     _db.upsert_contract(contract)
 
 

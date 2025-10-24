@@ -189,7 +189,39 @@ class TestCreateContract(unittest.IsolatedAsyncioTestCase):
     async def test_valid_contract_creation(self):
         await create_contract(default_contract_input())
         stored_contract = self.db.get_contract(default_discord_id)
+        stored_participant = self.db.get_participant(default_discord_id)
         self.assertEqual(stored_contract, default_contract())
+        self.assertEqual(stored_participant, default_participant())
+
+    async def test_graceful_update_of_existing_contract(self):
+        await create_contract(default_contract_input())
+        updated_amount = 800000
+        updated_input = default_contract_input(amount=updated_amount)
+        await create_contract(updated_input)
+        stored_contract = self.db.get_contract(default_discord_id)
+        self.assertEqual(
+            stored_contract,
+            Contract(discord_id=default_discord_id, amount=updated_amount),
+        )
+
+    async def test_graceful_update_of_existing_participant(self):
+        await create_contract(default_contract_input())
+        updated_first_name = "UpdatedName"
+        updated_input = default_contract_input(first_name=updated_first_name)
+        await create_contract(updated_input)
+        stored_participant = self.db.get_participant(default_discord_id)
+        self.assertEqual(
+            stored_participant,
+            default_participant(first_name=updated_first_name),
+        )
+
+    async def test_coaches_may_not_create_contracts(self):
+        input = default_contract_input()
+        await participate_as_coach(input.discord_id, input.first_name, input.last_name)
+        with self.assertRaises(ProfessionalsException) as pe:
+            await create_contract(input)
+        user_message = pe.exception.user_message
+        self.assertEqual(user_message, "Coaches may not create contracts.")
 
     async def test_invalid_contract_raises_exception(self):
         input = default_contract_input(amount=-500000, first_name="Juhdu 123")
