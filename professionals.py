@@ -26,9 +26,9 @@ def validate_discord_id(discord_id) -> list[ValidationError]:
 
 def validate_participant(participant: Participant) -> list[ValidationError]:
     errors = validate_discord_id(participant.discord_id)
-    if not participant.first_name.isalpha():
+    if participant.first_name != "" and not participant.first_name.isalpha():
         errors.append(ValidationError("first_name", "must be non-empty and alphabetic."))
-    if not participant.last_name.isalpha():
+    if participant.last_name != "" and not participant.last_name.isalpha():
         errors.append(ValidationError("last_name", "must be non-empty and alphabetic."))
     return errors
 

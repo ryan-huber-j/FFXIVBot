@@ -87,18 +87,22 @@ class TestValidateParticipant(unittest.TestCase):
                 assert_error(errors, "discord_id", "must be an integer.")
 
     def test_invalid_first_name(self):
-        tests = ["", "Juhdu with Spaces", "Juhdu-Khigbaa", " ", "/4iieh)OEWP\\"]
+        tests = ["Juhdu with Spaces", "Juhdu-Khigbaa", " ", "/4iieh)OEWP\\"]
         for test in tests:
             with self.subTest(first_name=test):
                 errors = validate_participant(default_participant(first_name=test))
                 assert_error(errors, "first_name", "must be non-empty and alphabetic.")
 
     def test_invalid_last_name(self):
-        tests = ["", "Khigbaa with Spaces", "Khigbaa-Khigbaa", " ", "/4iieh)OEWP\\"]
+        tests = ["Khigbaa with Spaces", "Khigbaa-Khigbaa", " ", "/4iieh)OEWP\\"]
         for test in tests:
             with self.subTest(last_name=test):
                 errors = validate_participant(default_participant(last_name=test))
                 assert_error(errors, "last_name", "must be non-empty and alphabetic.")
+
+    def test_should_accept_empty_first_and_last_name_within_contract_validation(self):
+        errors = validate_participant(default_participant(first_name="", last_name=""))
+        self.assertEqual(len(errors), 0)
 
 
 class TestValidateContract(unittest.TestCase):
@@ -154,7 +158,7 @@ class TestParticipation(unittest.IsolatedAsyncioTestCase):
 
     async def test_invalid_coach(self):
         with self.assertRaises(ValidationException) as ve:
-            await participate_as_coach("not an int", "", "Khigbaa123")
+            await participate_as_coach("not an int", "   ikd", "Khigbaa123")
         errors = ve.exception.errors
         self.assertEqual(len(errors), 3)
 

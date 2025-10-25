@@ -10,8 +10,7 @@ from dotenv import load_dotenv
 import requests
 
 from db import SqlLiteClient
-import domain
-from domain import ContractInput
+from domain import ContractInput, Participant, ProfessionalsException, ValidationException
 from lodestone import LodestoneScraper
 import professionals
 
@@ -46,6 +45,95 @@ def present_validation_errors(ve: professionals.ValidationException) -> str:
     return textwrap.dedent(f"One or more fields were invalid:\n{lines}")
 
 
+async def invoke_with_exception_handling(
+    interaction: discord.Interaction, func, *args, **kwargs
+):
+    try:
+        result = await func(*args, **kwargs)
+        return result
+    except ValidationException as ve:
+        await interaction.followup.send(present_validation_errors(ve))
+        raise ve
+    except ProfessionalsException as pe:
+        await interaction.followup.send(pe.user_message)
+        raise pe
+    except Exception as e:
+        await interaction.followup.send("An unexpected error occurred")
+        raise e
+
+
+@tree.command(
+    name="participate",
+    description="Become a professional and earn rewards!",
+    guild=guild,
+)
+@app_commands.describe(
+    character_first_name="The first name of your character",
+    character_last_name="The last name of your character",
+)
+async def participate(
+    interaction: discord.Interaction,
+    character_first_name: str,
+    character_last_name: str,
+):
+    await interaction.response.defer(ephemeral=True, thinking=True)
+
+    await invoke_with_exception_handling(
+        interaction,
+        professionals.participate_as_player,
+        interaction.user.id,
+        character_first_name,
+        character_last_name,
+    )
+
+    msg = f"Registered {character_first_name} {character_last_name} as a participant."
+    await interaction.followup.send(msg)
+
+
+@tree.command(
+    name="coach",
+    description="Become a professional, but do not earn rewards.",
+    guild=guild,
+)
+@app_commands.describe(
+    character_first_name="The first name of your character",
+    character_last_name="The last name of your character",
+)
+async def coach(
+    interaction: discord.Interaction,
+    character_first_name: str,
+    character_last_name: str,
+):
+    await interaction.response.defer(ephemeral=True, thinking=True)
+
+    await invoke_with_exception_handling(
+        interaction,
+        professionals.participate_as_coach,
+        interaction.user.id,
+        character_first_name,
+        character_last_name,
+    )
+
+    msg = f"Registered {character_first_name} {character_last_name} as a coach."
+    await interaction.followup.send(msg)
+
+
+@tree.command(
+    name="end_participation",
+    description="End your participation as a professional.",
+    guild=guild,
+)
+async def end_participation(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True, thinking=True)
+
+    await invoke_with_exception_handling(
+        interaction, professionals.end_participation, interaction.user.id
+    )
+
+    msg = f"Withdrew {interaction.user.display_name} from the professional program."
+    await interaction.followup.send(msg)
+
+
 @tree.command(
     name="contract",
     description="Submit a contract and earn a payout if you meet your goal!",
@@ -59,8 +147,8 @@ def present_validation_errors(ve: professionals.ValidationException) -> str:
 async def create_contract(
     interaction: discord.Interaction,
     amount: int,
-    character_first_name: str,
-    character_last_name: str,
+    character_first_name: str = "",
+    character_last_name: str = "",
 ) -> None:
     await interaction.response.defer(ephemeral=True, thinking=True)
 
@@ -72,19 +160,30 @@ async def create_contract(
         contract_amounts=[300000, 420000, 500000, 800000, 1000000],
     )
 
-    try:
-        await professionals.create_contract(contract_input)
-    except domain.ValidationException as ve:
-        await interaction.followup.send(present_validation_errors(ve))
-        return
-    except Exception as e:
-        await interaction.followup.send(f"Failed to create contract: {e}")
-        raise e
+    await invoke_with_exception_handling(
+        interaction, professionals.create_contract, contract_input
+    )
 
     msg = (
         f"Contract created for {character_first_name} {character_last_name} to "
         f"earn {amount} seals per week."
     )
+    await interaction.followup.send(msg)
+
+
+@tree.command(
+    name="end_contract",
+    description="End your current contract.",
+    guild=guild,
+)
+async def end_contract(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True, thinking=True)
+
+    await invoke_with_exception_handling(
+        interaction, professionals.end_contract, interaction.user.id
+    )
+
+    msg = f"Ended contract for {interaction.user.display_name}."
     await interaction.followup.send(msg)
 
 
