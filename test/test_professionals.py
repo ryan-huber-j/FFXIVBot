@@ -74,6 +74,24 @@ def default_player_score(
     )
 
 
+def default_contract_result(
+    discord_id=default_discord_id,
+    first_name=default_first_name,
+    last_name=default_last_name,
+    amount=500000,
+    is_completed=True,
+    payout=650000,
+):
+    return ContractResult(
+        discord_id=discord_id,
+        first_name=first_name,
+        last_name=last_name,
+        amount=amount,
+        is_completed=is_completed,
+        payout=payout,
+    )
+
+
 def assert_error(errors, field, message):
     tc.assertEqual(len(errors), 1)
     tc.assertEqual(errors[0].field, field)
@@ -332,7 +350,7 @@ class TestGetCompetitionResults(unittest.IsolatedAsyncioTestCase):
                     discord_id=player.discord_id,
                     first_name=player.first_name,
                     last_name=player.last_name,
-                    is_coach=False,
+                    is_coach=player.is_coach,
                 )
             )
 
@@ -470,16 +488,68 @@ class TestGetCompetitionResults(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(results.competition_win_reason, WinReason.HIGHEST_SEALS)
         self.assertIsNone(results.drawing_winner)
         self.assertEqual(results.drawing_win_reason, WinReason.NO_ELIGIBLE_PLAYERS)
+        self.assertEqual(results.contract_results, [default_contract_result()])
+
+    @responses.activate
+    async def test_should_process_incomplete_contracts(self):
+        player = default_player_score(seals_earned=200000)
+        contract = default_contract()
+        self.setup_players({"123": player}, contracts=[contract])
+
+        results = await self.wait_for_results()
+        self.assertIn(player, results.player_scores)
+        self.assertEqual(results.competition_winner, player)
+        self.assertEqual(results.competition_win_reason, WinReason.HIGHEST_SEALS)
+        self.assertIsNone(results.drawing_winner)
+        self.assertEqual(results.drawing_win_reason, WinReason.NO_ELIGIBLE_PLAYERS)
+        self.assertEqual(
+            results.contract_results,
+            [default_contract_result(is_completed=False, payout=0)],
+        )
+
+    @responses.activate
+    async def test_should_realistic_scenario_with_players_and_coaches(self):
+        player1 = default_player_score()
+        player2 = default_player_score(
+            discord_id=987654321098765432,
+            first_name="Another",
+            last_name="Player",
+            seals_earned=300000,
+        )
+        coach = PlayerScore(
+            discord_id=555555555555555555,
+            first_name="Coach",
+            last_name="Person",
+            seals_earned=10000000,
+            is_coach=True,
+        )
+        contract1 = default_contract()
+        contract2 = Contract(
+            discord_id=987654321098765432,
+            amount=800000,
+        )
+        self.setup_players(
+            {"123": player1, "456": player2, "555": coach},
+            contracts=[contract1, contract2],
+        )
+
+        results = await self.wait_for_results()
+        self.assertEqual(results.player_scores, [player1, player2, coach])
+        self.assertEqual(results.competition_winner, player1)
+        self.assertEqual(results.competition_win_reason, WinReason.HIGHEST_SEALS)
+        self.assertEqual(results.drawing_winner, player2)
+        self.assertEqual(results.drawing_win_reason, WinReason.RANDOM_DRAWING)
         self.assertEqual(
             results.contract_results,
             [
-                ContractResult(
-                    discord_id=player.discord_id,
-                    first_name=player.first_name,
-                    last_name=player.last_name,
-                    amount=500000,
-                    is_completed=True,
-                    payout=contracts[contract.amount],
-                )
+                default_contract_result(),
+                default_contract_result(
+                    discord_id=player2.discord_id,
+                    first_name=player2.first_name,
+                    last_name=player2.last_name,
+                    amount=contract2.amount,
+                    is_completed=False,
+                    payout=0,
+                ),
             ],
         )
