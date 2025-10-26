@@ -16,7 +16,7 @@ class ValidationException(Exception):
         )
 
 
-class ProfessionalsException(Exception):
+class UserException(Exception):
     def __init__(self, log_message: str, user_message: str):
         super().__init__(log_message)
         self.user_message = user_message

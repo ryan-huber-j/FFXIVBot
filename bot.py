@@ -10,7 +10,13 @@ from dotenv import load_dotenv
 import requests
 
 from db import SqlLiteClient
-from domain import ContractInput, Participant, ProfessionalsException, ValidationException
+from domain import (
+    CompetitionResults,
+    ContractInput,
+    Participant,
+    UserException,
+    ValidationException,
+)
 from lodestone import LodestoneScraper
 import professionals
 
@@ -54,7 +60,7 @@ async def invoke_with_exception_handling(
     except ValidationException as ve:
         await interaction.followup.send(present_validation_errors(ve))
         raise ve
-    except ProfessionalsException as pe:
+    except UserException as pe:
         await interaction.followup.send(pe.user_message)
         raise pe
     except Exception as e:
@@ -195,12 +201,30 @@ def get_fc_member_ids() -> list[str]:
     return [member.ffxiv_id for member in fc_members]
 
 
+async def consume_results(interaction: discord.Interaction) -> CompetitionResults:
+    async for result in professionals.get_competition_results():
+        if isinstance(result, str):
+            await interaction.followup.send(result)
+        elif isinstance(result, CompetitionResults):
+            return result
+        else:
+            raise Exception("Received unknown result type from get_competition_results")
+
+
 @tree.command(
-    name="get_results",
+    name="post_competition_results",
     description="Retrieves all FC members' weekly GC ranking results",
     guild=guild,
 )
 async def get_results(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True, thinking=True)
+
+    await invoke_with_exception_handling(
+        interaction, lambda: consume_results(interaction)
+    )
+
+
+async def old_get_results(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True, thinking=True)
     channel = discord.utils.get(interaction.guild.channels, name="professionals-signups")
     if channel is None:
@@ -325,17 +349,6 @@ async def get_results(interaction: discord.Interaction):
         )
 
     await interaction.followup.send("\n".join(message_parts))
-
-
-async def get_results_2(interaction: discord.Interaction):
-    await interaction.response.defer(ephemeral=True, thinking=True)
-    signup_channel = discord.utils.get(
-        interaction.guild.channels, name="professionals-signups"
-    )
-
-    if signup_channel is None:
-        await interaction.followup.send("no channel named *professionals-signups* exists")
-        return
 
 
 def mention(user_id):

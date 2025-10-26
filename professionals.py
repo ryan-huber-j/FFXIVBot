@@ -118,7 +118,7 @@ async def create_contract(input: ContractInput):
     participant = _db.get_participant(input.discord_id)
     if participant is None:
         if input.first_name == "" or input.last_name == "":
-            raise ProfessionalsException(
+            raise UserException(
                 log_message=f"User {input.discord_id} attempted to create a contract without an existing participant record and no first or last name provided.",
                 user_message="First name and last name are required for new participants.",
             )
@@ -129,7 +129,7 @@ async def create_contract(input: ContractInput):
             is_coach=False,
         )
     elif participant.is_coach:
-        raise ProfessionalsException(
+        raise UserException(
             log_message=f"User {input.discord_id} attempted to create a contract but is a coach.",
             user_message="Coaches may not create contracts.",
         )

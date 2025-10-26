@@ -262,7 +262,7 @@ class TestCreateContract(unittest.IsolatedAsyncioTestCase):
     async def test_coaches_may_not_create_contracts(self):
         input = default_contract_input()
         await participate_as_coach(input.discord_id, input.first_name, input.last_name)
-        with self.assertRaises(ProfessionalsException) as pe:
+        with self.assertRaises(UserException) as pe:
             await create_contract(input)
         user_message = pe.exception.user_message
         self.assertEqual(user_message, "Coaches may not create contracts.")
