@@ -91,39 +91,55 @@ class TestValidateParticipant(unittest.TestCase):
         for test in tests:
             with self.subTest(first_name=test):
                 errors = validate_participant(default_participant(first_name=test))
-                assert_error(errors, "first_name", "must be non-empty and alphabetic.")
+                assert_error(errors, "first_name", "must be alphanumeric.")
 
     def test_invalid_last_name(self):
         tests = ["Khigbaa with Spaces", "Khigbaa-Khigbaa", " ", "/4iieh)OEWP\\"]
         for test in tests:
             with self.subTest(last_name=test):
                 errors = validate_participant(default_participant(last_name=test))
-                assert_error(errors, "last_name", "must be non-empty and alphabetic.")
+                assert_error(errors, "last_name", "must be alphanumeric.")
 
     def test_should_accept_empty_first_and_last_name_within_contract_validation(self):
         errors = validate_participant(default_participant(first_name="", last_name=""))
-        self.assertEqual(len(errors), 0)
+        self.assertEqual(len(errors), 2)
 
 
-class TestValidateContract(unittest.TestCase):
+class TestValidateContractInput(unittest.TestCase):
     def test_valid_input(self):
-        errors = validate_contract(default_contract(), contract_values)
+        errors = validate_contract_input(default_contract_input())
         self.assertEqual(len(errors), 0)
+
+    def test_valid_input_with_no_first_or_last_name(self):
+        errors = validate_contract_input(
+            default_contract_input(first_name="", last_name="")
+        )
+        self.assertEqual(len(errors), 0)
+
+    def test_invalid_input_when_only_first_name_empty(self):
+        errors = validate_contract_input(
+            default_contract_input(first_name="Juhdu", last_name="")
+        )
+        self.assertEqual(len(errors), 1)
+
+    def test_invalid_input_when_only_last_name_empty(self):
+        errors = validate_contract_input(
+            default_contract_input(first_name="", last_name="Khigbaa")
+        )
+        self.assertEqual(len(errors), 1)
 
     def test_invalid_discord_id(self):
         tests = ["not_an_int", 123.456, None, [], {}]
         for test in tests:
             with self.subTest(discord_id=test):
-                errors = validate_contract(
-                    default_contract(discord_id=test), contract_values
-                )
+                errors = validate_contract_input(default_contract_input(discord_id=test))
                 assert_error(errors, "discord_id", "must be an integer.")
 
     def test_invalid_seals(self):
         tests = [0, -1, -100, 300001, 430000, 1e8]
         for test in tests:
             with self.subTest(amount=test):
-                errors = validate_contract(default_contract(amount=test), contract_values)
+                errors = validate_contract_input(default_contract_input(amount=test))
                 assert_error(
                     errors,
                     "amount",
@@ -158,7 +174,7 @@ class TestParticipation(unittest.IsolatedAsyncioTestCase):
 
     async def test_invalid_coach(self):
         with self.assertRaises(ValidationException) as ve:
-            await participate_as_coach("not an int", "   ikd", "Khigbaa123")
+            await participate_as_coach("not an int", "   ikd", "Khigbaa1 23")
         errors = ve.exception.errors
         self.assertEqual(len(errors), 3)
 
@@ -173,14 +189,14 @@ class TestParticipation(unittest.IsolatedAsyncioTestCase):
 
     async def test_should_end_participation_with_contract(self):
         participant = default_participant()
-        contract = default_contract()
+        input = default_contract_input()
         await participate_as_player(
             participant.discord_id, participant.first_name, participant.last_name
         )
-        await create_contract(default_contract_input())
+        await create_contract(input)
         await end_participation(participant.discord_id)
         stored_participant = self.db.get_participant(participant.discord_id)
-        stored_contract = self.db.get_contract(contract.discord_id)
+        stored_contract = self.db.get_contract(input.discord_id)
         self.assertIsNone(stored_participant)
         self.assertIsNone(stored_contract)
 
@@ -228,11 +244,13 @@ class TestCreateContract(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(user_message, "Coaches may not create contracts.")
 
     async def test_invalid_contract_raises_exception(self):
-        input = default_contract_input(amount=-500000, first_name="Juhdu 123")
+        input = default_contract_input(
+            amount=500000, first_name="Juhdu 123", last_name="Khigbaa"
+        )
         with self.assertRaises(ValidationException) as ve:
             await create_contract(input)
         errors = ve.exception.errors
-        self.assertEqual(len(errors), 2)
+        self.assertEqual(len(errors), 1)
 
     async def test_should_end_contract(self):
         contract = default_contract()

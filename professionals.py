@@ -24,32 +24,23 @@ def validate_discord_id(discord_id) -> list[ValidationError]:
     return errors
 
 
-def validate_participant(participant: Participant) -> list[ValidationError]:
-    errors = validate_discord_id(participant.discord_id)
-    if participant.first_name != "" and not participant.first_name.isalpha():
-        errors.append(ValidationError("first_name", "must be non-empty and alphabetic."))
-    if participant.last_name != "" and not participant.last_name.isalpha():
-        errors.append(ValidationError("last_name", "must be non-empty and alphabetic."))
+def validate_alphanumeric(name: str, field_name: str) -> list[ValidationError]:
+    errors = []
+    if not name.isalnum() and name != "":
+        errors.append(ValidationError(field_name, "must be alphanumeric."))
     return errors
 
 
-def validate_contract(
-    contract: Contract, contract_amounts: list[int]
-) -> list[ValidationError]:
-    errors = validate_discord_id(contract.discord_id)
-    if contract.amount not in contract_amounts and len(contract_amounts):
-        if len(contract_amounts) == 1:
-            contract_amounts_str = f"must be {contract_amounts[0]}."
-        elif len(contract_amounts) == 2:
-            contract_amounts_str = (
-                f"must be {contract_amounts[0]} or {contract_amounts[1]}."
-            )
-        else:
-            contract_amounts_str = (
-                f"must be one of: {', '.join(str(amount) for amount in contract_amounts[:-1])}, "
-                f"or {contract_amounts[-1]}."
-            )
-        errors.append(ValidationError("amount", contract_amounts_str))
+def validate_participant(participant: Participant) -> list[ValidationError]:
+    errors = validate_discord_id(participant.discord_id)
+    if participant.first_name == "":
+        errors.append(ValidationError("first_name", "must be non-empty."))
+    else:
+        errors += validate_alphanumeric(participant.first_name, "first_name")
+    if participant.last_name == "":
+        errors.append(ValidationError("last_name", "must be non-empty."))
+    else:
+        errors += validate_alphanumeric(participant.last_name, "last_name")
     return errors
 
 
@@ -84,29 +75,72 @@ async def end_participation(discord_id: int):
     _db.delete_contract(discord_id)
 
 
+def validate_contract_input(contract: ContractInput) -> list[ValidationError]:
+    errors = validate_discord_id(contract.discord_id)
+    contract_amounts = contract.contract_amounts
+
+    if contract.amount not in contract_amounts:
+        if len(contract_amounts) == 1:
+            contract_amounts_str = f"must be {contract_amounts[0]}."
+        elif len(contract_amounts) == 2:
+            contract_amounts_str = (
+                f"must be {contract_amounts[0]} or {contract_amounts[1]}."
+            )
+        else:
+            contract_amounts_str = (
+                f"must be one of: {', '.join(str(amount) for amount in contract_amounts[:-1])}, "
+                f"or {contract_amounts[-1]}."
+            )
+        errors.append(ValidationError("amount", contract_amounts_str))
+
+    if contract.first_name != "" and contract.last_name == "":
+        errors.append(
+            ValidationError("last_name", "must be non-empty if first name is provided.")
+        )
+    elif contract.last_name != "" and contract.first_name == "":
+        errors.append(
+            ValidationError("first_name", "must be non-empty if last name is provided.")
+        )
+    else:
+        errors += validate_alphanumeric(contract.first_name, "first_name")
+        errors += validate_alphanumeric(contract.last_name, "last_name")
+
+    return errors
+
+
 async def create_contract(input: ContractInput):
-    existing_participant = _db.get_participant(input.discord_id)
-    if existing_participant is not None and existing_participant.is_coach:
+    validation_errors = validate_contract_input(input)
+    if len(validation_errors) > 0:
+        raise ValidationException(validation_errors)
+
+    participant = _db.get_participant(input.discord_id)
+    if participant is None:
+        if input.first_name == "" or input.last_name == "":
+            raise ProfessionalsException(
+                log_message=f"User {input.discord_id} attempted to create a contract without an existing participant record and no first or last name provided.",
+                user_message="First name and last name are required for new participants.",
+            )
+        participant = Participant(
+            discord_id=input.discord_id,
+            first_name=input.first_name,
+            last_name=input.last_name,
+            is_coach=False,
+        )
+    elif participant.is_coach:
         raise ProfessionalsException(
             log_message=f"User {input.discord_id} attempted to create a contract but is a coach.",
             user_message="Coaches may not create contracts.",
         )
-
-    participant = Participant(
-        discord_id=input.discord_id,
-        first_name=input.first_name,
-        last_name=input.last_name,
-        is_coach=False,
-    )
-    contract = Contract(discord_id=input.discord_id, amount=input.amount)
-
-    validation_errors = validate_participant(participant) + validate_contract(
-        contract, input.contract_amounts
-    )
-    if len(validation_errors) > 0:
-        raise ValidationException(validation_errors)
+    else:
+        participant = Participant(
+            discord_id=input.discord_id,
+            first_name=input.first_name,
+            last_name=input.last_name,
+            is_coach=False,
+        )
 
     _db.upsert_participant(participant)
+    contract = Contract(discord_id=input.discord_id, amount=input.amount)
     _db.upsert_contract(contract)
 
 

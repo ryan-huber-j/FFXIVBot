@@ -130,7 +130,7 @@ async def end_participation(interaction: discord.Interaction):
         interaction, professionals.end_participation, interaction.user.id
     )
 
-    msg = f"Withdrew {interaction.user.display_name} from the professional program."
+    msg = f"Withdrew {interaction.user.display_name} from professionals."
     await interaction.followup.send(msg)
 
 
@@ -167,6 +167,8 @@ async def create_contract(
     msg = (
         f"Contract created for {character_first_name} {character_last_name} to "
         f"earn {amount} seals per week."
+        if character_first_name and character_last_name
+        else f"Contract created to earn {amount} seals per week."
     )
     await interaction.followup.send(msg)
 
