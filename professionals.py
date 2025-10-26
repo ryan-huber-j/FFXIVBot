@@ -1,4 +1,5 @@
 import random
+from typing import AsyncGenerator, Generator, Sequence
 
 from db import SqlLiteClient
 from domain import *
@@ -87,9 +88,10 @@ def validate_contract_input(contract: ContractInput) -> list[ValidationError]:
                 f"must be {contract_amounts[0]} or {contract_amounts[1]}."
             )
         else:
+            sorted_amounts = sorted(contract_amounts)
             contract_amounts_str = (
-                f"must be one of: {', '.join(str(amount) for amount in contract_amounts[:-1])}, "
-                f"or {contract_amounts[-1]}."
+                f"must be one of: {', '.join(str(amount) for amount in sorted_amounts[:-1])}, "
+                f"or {sorted_amounts[-1]}."
             )
         errors.append(ValidationError("amount", contract_amounts_str))
 
@@ -221,10 +223,47 @@ def choose_random_drawing_winner(participants: list[PlayerScore]) -> PlayerScore
     )
 
 
-async def get_competition_results() -> CompetitionResults:
+def evaluate_contracts(
+    player_scores: list[PlayerScore],
+    contracts: list[Contract],
+    amounts_to_payouts: dict[int, int],
+) -> list[ContractResult]:
+    completed_contracts = []
+
+    for ps in player_scores:
+        contract = next((c for c in contracts if c.discord_id == ps.discord_id), None)
+        if contract is None:
+            continue
+
+        is_completed = ps.seals_earned >= contract.amount
+        payout = amounts_to_payouts.get(contract.amount, 0) if is_completed else 0
+
+        completed_contracts.append(
+            ContractResult(
+                discord_id=ps.discord_id,
+                first_name=ps.first_name,
+                last_name=ps.last_name,
+                amount=contract.amount,
+                is_completed=is_completed,
+                payout=payout,
+            )
+        )
+
+    return completed_contracts
+
+
+async def get_competition_results(
+    contract_payouts: dict[int, int]
+) -> AsyncGenerator[str | CompetitionResults, None]:
+    yield "Fetching participants..."
     participants = _db.get_all_participants()
+
+    yield "Fetching Free Company members..."
     fc_members = _lodestone.get_free_company_members(FREE_COMPANY_ID)
+
+    yield "Fetching Grand Company rankings..."
     gc_rankings = _lodestone.get_grand_company_rankings(WORLD)
+
     players, honorable_mentions = score_players_and_honorable_mentions(
         fc_members, participants, gc_rankings
     )
@@ -242,12 +281,16 @@ async def get_competition_results() -> CompetitionResults:
         else WinReason.NO_ELIGIBLE_PLAYERS
     )
 
-    return CompetitionResults(
+    yield "Evaluating contracts..."
+    contracts = _db.get_all_contracts()
+    contract_results = evaluate_contracts(players, contracts, contract_payouts)
+
+    yield CompetitionResults(
         player_scores=players,
         competition_winner=competition_winner,
         drawing_winner=drawing_winner,
         competition_win_reason=competition_win_reason,
         drawing_win_reason=drawing_win_reason,
-        completed_contracts=[],
+        contract_results=contract_results,
         honorable_mentions=honorable_mentions,
     )

@@ -100,3 +100,11 @@ class TestContracts(unittest.TestCase):
         self.db_client.upsert_contract(contract2)
         result = self.db_client.get_contract(123456789)
         self.assertEqual(result, contract2)
+
+    def test_should_get_all_contracts(self):
+        contract1 = Contract(discord_id=111111111, amount=150)
+        contract2 = Contract(discord_id=222222222, amount=250)
+        self.db_client.upsert_contract(contract1)
+        self.db_client.upsert_contract(contract2)
+        result = self.db_client.get_all_contracts()
+        self.assertEqual(result, [contract1, contract2])

@@ -93,6 +93,16 @@ class SqlLiteClient:
         )
         self.connection.commit()
 
+    def get_all_contracts(self) -> list[Contract]:
+        self.cursor.execute(
+            """
+            SELECT discord_id, amount
+            FROM contracts
+            """
+        )
+        rows = self.cursor.fetchall()
+        return [Contract(*row) for row in rows]
+
     def get_contract(self, discord_id: int) -> Contract | None:
         self.cursor.execute(
             """

@@ -75,7 +75,7 @@ class WinReason(Enum):
     RANDOM_DRAWING = 4
 
 
-class CompletedContract(NamedTuple):
+class ContractResult(NamedTuple):
     discord_id: int
     first_name: str
     last_name: str
@@ -97,5 +97,5 @@ class CompetitionResults(NamedTuple):
     drawing_winner: PlayerScore | None
     competition_win_reason: WinReason
     drawing_win_reason: WinReason
-    completed_contracts: list[CompletedContract]
+    contract_results: list[ContractResult]
     honorable_mentions: list[HonorableMention]

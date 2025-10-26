@@ -7,7 +7,13 @@ from domain import GrandCompanyRanking, HonorableMention, WinReason
 from professionals import *
 
 tc = unittest.TestCase()
-contract_values = [300000, 420000, 500000, 800000, 1000000]
+contracts = {
+    300000: 450000,
+    420000: 550000,
+    500000: 650000,
+    800000: 900000,
+    1000000: 3200000,
+}
 default_discord_id = 123456789012345678
 default_name = "Juhdu Khigbaa"
 default_first_name = "Juhdu"
@@ -49,7 +55,7 @@ def default_contract_input(
         first_name=first_name,
         last_name=last_name,
         amount=amount,
-        contract_amounts=contract_values,
+        contract_amounts=contracts.keys(),
     )
 
 
@@ -317,7 +323,9 @@ class TestGetCompetitionResults(unittest.IsolatedAsyncioTestCase):
         self.lodestone = LodestoneScraper(self.BASE_URL)
         initialize(self.db, self.lodestone)
 
-    def setup_players(self, ffxiv_ids_to_players, ffxiv_ids_to_honorable_mentions={}):
+    def setup_players(
+        self, ffxiv_ids_to_players, ffxiv_ids_to_honorable_mentions={}, contracts=[]
+    ):
         for _, player in ffxiv_ids_to_players.items():
             self.db.upsert_participant(
                 Participant(
@@ -379,29 +387,38 @@ class TestGetCompetitionResults(unittest.IsolatedAsyncioTestCase):
         for gc_response in gc_responses:
             responses.add(gc_response)
 
+        for contract in contracts:
+            self.db.upsert_contract(contract)
+
+    async def wait_for_results(self):
+        async for result in get_competition_results(contracts):
+            if isinstance(result, CompetitionResults):
+                return result
+        self.fail("Did not receive CompetitionResults from async generator.")
+
     @responses.activate
     async def test_should_return_no_results_when_no_competitors(self):
         self.setup_players({})
-        results = await get_competition_results()
+        results = await self.wait_for_results()
         self.assertEqual(results.player_scores, [])
         self.assertIsNone(results.competition_winner)
         self.assertEqual(results.competition_win_reason, WinReason.NO_ELIGIBLE_PLAYERS)
         self.assertIsNone(results.drawing_winner)
         self.assertEqual(results.drawing_win_reason, WinReason.NO_ELIGIBLE_PLAYERS)
-        self.assertEqual(results.completed_contracts, [])
+        self.assertEqual(results.contract_results, [])
 
     @responses.activate
     async def test_should_return_single_competitor_as_winner(self):
         player = default_player_score()
         self.setup_players({"123": player})
 
-        results = await get_competition_results()
+        results = await self.wait_for_results()
         self.assertIn(player, results.player_scores)
         self.assertEqual(results.competition_winner, player)
         self.assertEqual(results.competition_win_reason, WinReason.HIGHEST_SEALS)
         self.assertIsNone(results.drawing_winner)
         self.assertEqual(results.drawing_win_reason, WinReason.NO_ELIGIBLE_PLAYERS)
-        self.assertEqual(results.completed_contracts, [])
+        self.assertEqual(results.contract_results, [])
 
     @responses.activate
     async def test_should_assign_two_competitors_correctly(self):
@@ -414,7 +431,7 @@ class TestGetCompetitionResults(unittest.IsolatedAsyncioTestCase):
         )
         self.setup_players({"123": player, "456": player2})
 
-        results = await get_competition_results()
+        results = await self.wait_for_results()
         self.assertIn(player, results.player_scores)
         self.assertIn(player2, results.player_scores)
         self.assertEqual(results.competition_winner, player)
@@ -433,10 +450,36 @@ class TestGetCompetitionResults(unittest.IsolatedAsyncioTestCase):
         )
         self.setup_players({"123": player}, {"honorable1": honorable_mention})
 
-        results = await get_competition_results()
+        results = await self.wait_for_results()
         self.assertIn(player, results.player_scores)
         self.assertEqual(results.competition_winner, player)
         self.assertEqual(results.competition_win_reason, WinReason.HIGHEST_SEALS)
         self.assertIsNone(results.drawing_winner)
         self.assertEqual(results.drawing_win_reason, WinReason.NO_ELIGIBLE_PLAYERS)
         self.assertEqual(results.honorable_mentions, [honorable_mention])
+
+    @responses.activate
+    async def test_should_process_completed_contracts(self):
+        player = default_player_score()
+        contract = default_contract()
+        self.setup_players({"123": player}, contracts=[contract])
+
+        results = await self.wait_for_results()
+        self.assertIn(player, results.player_scores)
+        self.assertEqual(results.competition_winner, player)
+        self.assertEqual(results.competition_win_reason, WinReason.HIGHEST_SEALS)
+        self.assertIsNone(results.drawing_winner)
+        self.assertEqual(results.drawing_win_reason, WinReason.NO_ELIGIBLE_PLAYERS)
+        self.assertEqual(
+            results.contract_results,
+            [
+                ContractResult(
+                    discord_id=player.discord_id,
+                    first_name=player.first_name,
+                    last_name=player.last_name,
+                    amount=500000,
+                    is_completed=True,
+                    payout=contracts[contract.amount],
+                )
+            ],
+        )
