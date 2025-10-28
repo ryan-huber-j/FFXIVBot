@@ -64,6 +64,7 @@ class PlayerScore(NamedTuple):
     discord_id: int
     first_name: str
     last_name: str
+    rank: int
     seals_earned: int
     is_coach: bool = False
 

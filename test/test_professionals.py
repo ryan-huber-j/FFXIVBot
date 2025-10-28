@@ -69,6 +69,7 @@ def default_player_score(
         discord_id=discord_id,
         first_name=first_name,
         last_name=last_name,
+        rank=1,
         seals_earned=seals_earned,
         is_coach=False,
     )
@@ -298,16 +299,16 @@ class TestFindCompetitionWinner(unittest.TestCase):
 
     def test_multiple_players_highest_seals(self):
         player1 = default_player_score()
-        player2 = PlayerScore(456, "Another", "Player", 800000)
-        player3 = PlayerScore(789, "Third", "Player", 300000)
+        player2 = PlayerScore(456, "Another", "Player", 1, 800000)
+        player3 = PlayerScore(789, "Third", "Player", 2, 300000)
         winner, reason = find_competition_winner([player1, player2, player3])
         self.assertEqual(winner, player2)
         self.assertEqual(reason, WinReason.HIGHEST_SEALS)
 
     def test_tie_breaker(self):
         player1 = default_player_score()
-        player2 = PlayerScore(456, "Another", "Player", 500000)
-        player3 = PlayerScore(789, "Third", "Gamer", 300000)
+        player2 = PlayerScore(456, "Another", "Player", 1, 500000)
+        player3 = PlayerScore(789, "Third", "Gamer", 2, 300000)
         winner, reason = find_competition_winner([player1, player2, player3])
         self.assertIsNotNone(winner)
         self.assertIn(winner, [player1, player2])
@@ -520,6 +521,7 @@ class TestGetCompetitionResults(unittest.IsolatedAsyncioTestCase):
             discord_id=555555555555555555,
             first_name="Coach",
             last_name="Person",
+            rank=1,
             seals_earned=10000000,
             is_coach=True,
         )

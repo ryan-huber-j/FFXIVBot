@@ -182,6 +182,7 @@ def score_players_and_honorable_mentions(
                     discord_id=participant.discord_id,
                     first_name=participant.first_name,
                     last_name=participant.last_name,
+                    rank=ranking.rank,
                     seals_earned=ranking.seals,
                     is_coach=participant.is_coach,
                 )
