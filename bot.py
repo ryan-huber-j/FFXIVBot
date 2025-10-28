@@ -13,7 +13,9 @@ from db import SqlLiteClient
 from domain import (
     CompetitionResults,
     ContractInput,
+    HonorableMention,
     Participant,
+    PlayerScore,
     UserException,
     ValidationException,
 )
@@ -22,6 +24,33 @@ import professionals
 
 DUPLICATION_EXPLANATION = " *Note: Defaulted to highest rank listed and combined score between two ranks earned*"
 WINNER_MESSAGE = " WINNER"
+RESULTS_MESSAGE_TEMPLATE = """
+✅ **Participants**
+Note: ranks Labeled "???" were less than the server-wide top 500 or unlisted at all.
+{formatted_participants}
+
+🛂 **Coaches**
+{formatted_coaches}
+
+⚠ **Honorable Mentions**
+These were people who were non-participants but made it to top 500 and were in our FC!
+{honorable_mentions_list}
+
+**Winner:** {mention_winner}
+
+For winning, {mention_winner} gets to choose from:
+Any Mog Station Items equaling $10.00 USD (before tax; some Square Enix implemented limitations apply).
+or
+$10.00 Amazon Gift Card
+
+📜 **Contracts this Week**
+{contracts_list}
+
+Special thanks to {mention_author} for maintaining our Discord bot {mention_bot_user} to help with rank info collection!
+
+Winner of the Random Prize - Gil Drawing was awarded {mention_drawing_winner}! An extra 350,000 Gil was sent to them! Remember: This prize is awarded to folks who didn't win the Mog Station prizes this week but still scored in the top 500 as a participant! Please make sure to sign up if you plan to participate to ensure you can be counted. See the Honorable Mentions list to see if YOU made the top 500 this week.
+""".strip()
+
 
 load_dotenv()
 
@@ -211,6 +240,16 @@ async def consume_results(interaction: discord.Interaction) -> CompetitionResult
             raise Exception("Received unknown result type from get_competition_results")
 
 
+def format_participant_list(players: list[PlayerScore | HonorableMention]) -> str:
+    lines = []
+    for p in players:
+        line = f"Rank {p.rank}: {p.first_name} {p.last_name} - **{p.seals_earned:,}**"
+        if p.is_winner:
+            line += " WINNER"
+        lines.append(line)
+    return "\n".join(lines)
+
+
 @tree.command(
     name="post_competition_results",
     description="Retrieves all FC members' weekly GC ranking results",
@@ -219,8 +258,27 @@ async def consume_results(interaction: discord.Interaction) -> CompetitionResult
 async def get_results(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True, thinking=True)
 
-    await invoke_with_exception_handling(
+    results = await invoke_with_exception_handling(
         interaction, lambda: consume_results(interaction)
+    )
+
+    participant_msg = format_participant_list(
+        filter(lambda p: not p.is_coach, results.player_scores)
+    )
+    coaches_msg = format_participant_list(
+        filter(lambda p: p.is_coach, results.player_scores)
+    )
+    honorable_mentions_msg = format_participant_list(results.honorable_mentions)
+
+    msg = RESULTS_MESSAGE_TEMPLATE.format(
+        formatted_participants=participant_msg,
+        formatted_coaches=coaches_msg,
+        honorable_mentions_list=honorable_mentions_msg,
+        mention_winner=mention(results.competition_winner.discord_id),
+        contracts_list="(omitted for brevity)",
+        mention_author=mention(interaction.user.id),
+        mention_bot_user=mention(client.user.id),
+        mention_drawing_winner="(omitted for brevity)",
     )
 
 
