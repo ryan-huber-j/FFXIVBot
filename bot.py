@@ -56,7 +56,13 @@ CONTRACTS_MESSAGE_TEMPLATE = """
 
 CREDITS_MESSAGE_TEMPLATE = "Special thanks to {} for maintaining our Discord bot {} to help with rank info collection!"
 
-DRAWING_MESSAGE_TEMPLATE = "Winner of the Random Prize - Gil Drawing was awarded {}! An extra 350,000 Gil was sent to them! Remember: This prize is awarded to folks who didn't win the Mog Station prizes this week but still scored in the top 500 as a participant! Please make sure to sign up if you plan to participate to ensure you can be counted. See the Honorable Mentions list to see if YOU made the top 500 this week."
+DRAWING_MESSAGE_TEMPLATE = (
+    "Winner of the Random Prize - Gil Drawing was awarded {}! An extra 350,000 Gil was "
+    "sent to them! Remember: This prize is awarded to folks who didn't win the Mog "
+    "Station prizes this week but still scored in the top 500 as a participant! Please "
+    "make sure to sign up if you plan to participate to ensure you can be counted. See "
+    "the Honorable Mentions list to see if YOU made the top 500 this week."
+)
 
 contract_payouts = {
     300000: 450000,
