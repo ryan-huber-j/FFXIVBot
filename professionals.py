@@ -67,6 +67,7 @@ async def participate_as_coach(discord_id: int, first_name: str, last_name: str)
     if len(errors := validate_participant(participant)) > 0:
         raise ValidationException(errors)
     _db.upsert_participant(participant)
+    _db.delete_contract(discord_id)
 
 
 async def end_participation(discord_id: int):

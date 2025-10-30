@@ -191,6 +191,21 @@ class TestParticipation(unittest.IsolatedAsyncioTestCase):
         stored_participant = self.db.get_participant(coach.discord_id)
         self.assertEqual(stored_participant, coach)
 
+    async def test_should_delete_contract_when_participant_becomes_coach(self):
+        participant = default_participant()
+        input = default_contract_input()
+        await participate_as_player(
+            participant.discord_id, participant.first_name, participant.last_name
+        )
+        await create_contract(input)
+        await participate_as_coach(
+            participant.discord_id, participant.first_name, participant.last_name
+        )
+        stored_participant = self.db.get_participant(participant.discord_id)
+        stored_contract = self.db.get_contract(input.discord_id)
+        self.assertEqual(stored_participant.is_coach, True)
+        self.assertIsNone(stored_contract)
+
     async def test_invalid_participant(self):
         with self.assertRaises(ValidationException) as ve:
             await participate_as_player("not an int", "Juhdu 123", "Kh igs09j3kE$$##baa")

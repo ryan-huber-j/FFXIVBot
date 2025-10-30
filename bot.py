@@ -87,10 +87,6 @@ def mention(user_id):
     return f"<@{user_id}>"
 
 
-def bold(text):
-    return f"**{text}**"
-
-
 def italicize(text):
     return f"*{text}*"
 
