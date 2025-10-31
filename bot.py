@@ -58,7 +58,7 @@ CONTRACTS_MESSAGE_TEMPLATE = """
 CREDITS_MESSAGE_TEMPLATE = "Special thanks to {} for maintaining our Discord bot {} to help with rank info collection!"
 
 DRAWING_MESSAGE_TEMPLATE = (
-    "## Random Drawing"
+    "## Random Drawing\n"
     "Winner of the Random Prize - Gil Drawing was awarded to {}! An extra 350,000 Gil was "
     "sent to them! Remember: This prize is awarded to folks who didn't win the Mog "
     "Station prizes this week but still scored in the top 500 as a participant! Please "
