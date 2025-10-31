@@ -28,36 +28,38 @@ DUPLICATION_EXPLANATION = " *Note: Defaulted to highest rank listed and combined
 WINNER_MESSAGE = " WINNER"
 
 PARTICIPANT_MESSAGE_TEMPLATE = """
-✅ **Participants**
+## ✅ Participants
 Note: ranks Labeled "???" were less than the server-wide top 500 or unlisted at all.
 {}
 """.strip()
-COACHES_MESSAGE_TEMPLATE = "🛂 **Coaches**\n{}"
+COACHES_MESSAGE_TEMPLATE = "## 🛂 Coaches\n{}"
 
 HONORABLE_MENTIONS_MESSAGE_TEMPLATE = """
-⚠ **Honorable Mentions**
+## ⚠ **Honorable Mentions**
 These were people who were non-participants but made it to top 500 and were in our FC!
 {}
 """.strip()
 
 WINNER_MESSAGE_TEMPLATE = """
-**Winner:** {mention_winner}
+## Competition Winner
+The winner for this week is: {mention_winner}!
 
 For winning, {mention_winner} gets to choose from:
 Any Mog Station Items equaling $10.00 USD (before tax; some Square Enix implemented limitations apply).
 or
 $10.00 Amazon Gift Card
-"""
+""".strip()
 
 CONTRACTS_MESSAGE_TEMPLATE = """
-📜 **Contracts this Week**
+## 📜 Contracts this Week
 {}
 """.strip()
 
 CREDITS_MESSAGE_TEMPLATE = "Special thanks to {} for maintaining our Discord bot {} to help with rank info collection!"
 
 DRAWING_MESSAGE_TEMPLATE = (
-    "Winner of the Random Prize - Gil Drawing was awarded {}! An extra 350,000 Gil was "
+    "## Random Drawing"
+    "Winner of the Random Prize - Gil Drawing was awarded to {}! An extra 350,000 Gil was "
     "sent to them! Remember: This prize is awarded to folks who didn't win the Mog "
     "Station prizes this week but still scored in the top 500 as a participant! Please "
     "make sure to sign up if you plan to participate to ensure you can be counted. See "
@@ -80,18 +82,11 @@ intents.members = True
 intents.message_content = True
 client = discord.Client(application_id=os.getenv("APPLICATION_ID"), intents=intents)
 tree = app_commands.CommandTree(client)
-guild = discord.Object(id=int(os.getenv("GUILD_ID")))
+guild: discord.Guild = discord.Object(id=int(os.getenv("GUILD_ID")))
+professionals_channel = None
 
 
-def mention(user_id):
-    return f"<@{user_id}>"
-
-
-def italicize(text):
-    return f"*{text}*"
-
-
-def run_bot(discord_token):
+def run_bot(discord_token: str):
     professionals.initialize(
         SqlLiteClient(), LodestoneScraper("https://na.finalfantasyxiv.com")
     )
@@ -100,8 +95,32 @@ def run_bot(discord_token):
 
 @client.event
 async def on_ready():
-    print(f"The bot has connected to Discord!")
     await tree.sync(guild=guild)
+    global professionals_channel
+    professionals_channel = discord.utils.get(
+        client.get_all_channels(), name="professionals-signups"
+    )
+    print(f"The bot has connected to Discord!")
+
+
+def mention(user_id: int) -> str:
+    return f"<@{user_id}>"
+
+
+def italicize(text: str) -> str:
+    return f"*{text}*"
+
+
+def get_signups_channel():
+    return discord.utils.get(client.get_all_channels(), name="professionals-signups")
+
+
+def get_professionals_role():
+    return discord.utils.get(guild.roles, name="Professional")
+
+
+def follow_up_to_user(interaction: discord.Interaction, message: str):
+    return interaction.followup.send(message, ephemeral=True)
 
 
 def present_validation_errors(ve: professionals.ValidationException) -> str:
@@ -116,13 +135,13 @@ async def invoke_with_exception_handling(
         result = await func(*args, **kwargs)
         return result
     except ValidationException as ve:
-        await interaction.followup.send(present_validation_errors(ve))
+        await follow_up_to_user(interaction, present_validation_errors(ve))
         raise ve
     except UserException as pe:
-        await interaction.followup.send(pe.user_message)
+        await follow_up_to_user(interaction, pe.user_message)
         raise pe
     except Exception as e:
-        await interaction.followup.send("An unexpected error occurred")
+        await follow_up_to_user(interaction, "An unexpected error occurred")
         raise e
 
 
@@ -135,6 +154,7 @@ async def invoke_with_exception_handling(
     character_first_name="The first name of your character",
     character_last_name="The last name of your character",
 )
+@app_commands.checks.has_role("Professional")
 async def participate(
     interaction: discord.Interaction,
     character_first_name: str,
@@ -151,7 +171,7 @@ async def participate(
     )
 
     msg = f"Registered {character_first_name} {character_last_name} as a participant."
-    await interaction.followup.send(msg)
+    await follow_up_to_user(interaction, msg)
 
 
 @tree.command(
@@ -163,6 +183,7 @@ async def participate(
     character_first_name="The first name of your character",
     character_last_name="The last name of your character",
 )
+@app_commands.checks.has_role("Professional")
 async def coach(
     interaction: discord.Interaction,
     character_first_name: str,
@@ -179,7 +200,7 @@ async def coach(
     )
 
     msg = f"Registered {character_first_name} {character_last_name} as a coach."
-    await interaction.followup.send(msg)
+    await follow_up_to_user(interaction, msg)
 
 
 @tree.command(
@@ -187,6 +208,7 @@ async def coach(
     description="End your participation as a professional.",
     guild=guild,
 )
+@app_commands.checks.has_role("Professional")
 async def end_participation(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True, thinking=True)
 
@@ -195,7 +217,7 @@ async def end_participation(interaction: discord.Interaction):
     )
 
     msg = f"Withdrew {interaction.user.display_name} from professionals."
-    await interaction.followup.send(msg)
+    await follow_up_to_user(interaction, msg)
 
 
 @tree.command(
@@ -208,6 +230,7 @@ async def end_participation(interaction: discord.Interaction):
     character_last_name="The last name of your character",
     amount="The number of seals you plan to earn this week",
 )
+@app_commands.checks.has_role("Professional")
 async def create_contract(
     interaction: discord.Interaction,
     amount: int,
@@ -234,7 +257,7 @@ async def create_contract(
         if character_first_name and character_last_name
         else f"Contract created to earn {amount} seals per week."
     )
-    await interaction.followup.send(msg)
+    await follow_up_to_user(interaction, msg)
 
 
 @tree.command(
@@ -242,6 +265,7 @@ async def create_contract(
     description="End your current contract.",
     guild=guild,
 )
+@app_commands.checks.has_role("Professional")
 async def end_contract(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True, thinking=True)
 
@@ -250,13 +274,13 @@ async def end_contract(interaction: discord.Interaction):
     )
 
     msg = f"Ended contract for {interaction.user.display_name}."
-    await interaction.followup.send(msg)
+    await follow_up_to_user(interaction, msg)
 
 
 async def consume_results(interaction: discord.Interaction) -> CompetitionResults:
     async for result in professionals.get_competition_results(contract_payouts):
         if isinstance(result, str):
-            await interaction.followup.send(result)
+            await follow_up_to_user(interaction, result)
         elif isinstance(result, CompetitionResults):
             return result
         else:
@@ -312,21 +336,12 @@ def format_contracts(contracts: list[Contract]) -> str:
                 "~~"
             )
         lines.append(contract_line)
-    return "\n".join(lines)
+    return CONTRACTS_MESSAGE_TEMPLATE.format("\n".join(lines))
 
 
-@tree.command(
-    name="post_competition_results",
-    description="Retrieves all FC members' weekly GC ranking results",
-    guild=guild,
-)
-async def post_competition_results(interaction: discord.Interaction):
-    await interaction.response.defer(ephemeral=True, thinking=True)
-
-    results: CompetitionResults = await invoke_with_exception_handling(
-        interaction, consume_results, interaction
-    )
-
+def format_results_message(
+    interaction: discord.Interaction, results: CompetitionResults
+) -> str:
     participant_scores = [p for p in results.player_scores if not p.is_coach]
     participant_msg = format_participants_msg(participant_scores)
     coach_scores = [p for p in results.player_scores if p.is_coach]
@@ -353,6 +368,7 @@ async def post_competition_results(interaction: discord.Interaction):
         )
 
     msg_parts = [
+        "# Competition Results",
         participant_msg,
         coaches_msg,
         honorable_mentions_msg,
@@ -361,6 +377,22 @@ async def post_competition_results(interaction: discord.Interaction):
         credits_msg,
         drawing_msg,
     ]
-    msg = "\n\n".join(part for part in msg_parts if part is not None)
+    msg = "\n".join(part for part in msg_parts if part is not None)
+    return msg
 
-    await interaction.followup.send(msg)
+
+@tree.command(
+    name="post_competition_results",
+    description="Retrieves all FC members' weekly GC ranking results",
+    guild=guild,
+)
+@app_commands.checks.has_role("Professional")
+async def post_competition_results(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True, thinking=True)
+
+    results: CompetitionResults = await invoke_with_exception_handling(
+        interaction, consume_results, interaction
+    )
+
+    msg = format_results_message(interaction, results)
+    await professionals_channel.send(msg)
