@@ -29,8 +29,8 @@ WINNER_MESSAGE = " WINNER"
 
 PARTICIPANT_MESSAGE_TEMPLATE = """
 ## ✅ Participants
-Note: ranks Labeled "???" were less than the server-wide top 500 or unlisted at all.
 {}
+-# Note: ranks Labeled "???" were less than the server-wide top 500 or unlisted at all.
 """.strip()
 COACHES_MESSAGE_TEMPLATE = "## 🛂 Coaches\n{}"
 
@@ -55,7 +55,9 @@ CONTRACTS_MESSAGE_TEMPLATE = """
 {}
 """.strip()
 
-CREDITS_MESSAGE_TEMPLATE = "Special thanks to {} for maintaining our Discord bot {} to help with rank info collection!"
+CREDITS_MESSAGE_TEMPLATE = (
+    "\n-# Special thanks to {} for maintaining our Discord bot, {}!"
+)
 
 DRAWING_MESSAGE_TEMPLATE = (
     "## Random Drawing\n"
@@ -319,24 +321,23 @@ def format_honorable_mentions_msg(mentions: list[HonorableMention]) -> str:
 
 def format_contracts(contracts: list[Contract]) -> str:
     if len(contracts) == 0:
-        return italicize("No contracts this week.")
-
-    lines = []
-    for cr in contracts:
-        if cr.is_completed:
-            contract_line = (
-                f"{cr.first_name} {cr.last_name}: {cr.amount:,} seals"
-                f" -- Payout: {cr.payout:,} gil"
-            )
-        else:
-            contract_line = (
-                "~~"
-                f"~~{cr.first_name} {cr.last_name}: {cr.amount:,} seals"
-                " -- Contract Incomplete"
-                "~~"
-            )
-        lines.append(contract_line)
-    return CONTRACTS_MESSAGE_TEMPLATE.format("\n".join(lines))
+        contract_msg = italicize("No contracts this week.")
+    else:
+        lines = []
+        for cr in contracts:
+            if cr.is_completed:
+                contract_line = (
+                    f"{cr.first_name} {cr.last_name}: {cr.amount:,} seals"
+                    f" -- Payout: {cr.payout:,} gil"
+                )
+            else:
+                contract_line = italicize(
+                    f"{cr.first_name} {cr.last_name}: {cr.amount:,} seals"
+                    " -- Contract Incomplete"
+                )
+            lines.append(contract_line)
+        contract_msg = "\n".join(lines)
+    return CONTRACTS_MESSAGE_TEMPLATE.format(contract_msg)
 
 
 def format_results_message(
@@ -374,8 +375,8 @@ def format_results_message(
         honorable_mentions_msg,
         winner_msg,
         contracts_msg,
-        credits_msg,
         drawing_msg,
+        credits_msg,
     ]
     msg = "\n".join(part for part in msg_parts if part is not None)
     return msg
