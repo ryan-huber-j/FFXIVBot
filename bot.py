@@ -1,5 +1,5 @@
-import os
 import textwrap
+from typing import Tuple
 
 import discord
 from discord import app_commands
@@ -21,22 +21,26 @@ from lodestone import LodestoneScraper
 import professionals
 
 DUPLICATION_EXPLANATION = " *Note: Defaulted to highest rank listed and combined score between two ranks earned*"
-WINNER_MESSAGE = " WINNER"
 
-PARTICIPANT_MESSAGE_TEMPLATE = """
+PARTICIPANT_STATUS_TEMPLATE = (
+    "You are a **{coach_or_player}** named **{first_name} {last_name}**."
+)
+CONTRACT_STATUS_TEMPLATE = "You have a contract to earn {amount} seals this week."
+
+PARTICIPANT_RESULTS_TEMPLATE = """
 ## ✅ Participants
 {}
 -# Note: ranks Labeled "???" were either less than our server-wide top 500 or not listed.
 """.strip()
-COACHES_MESSAGE_TEMPLATE = "## 🛂 Coaches\n{}"
+COACHES_RESULTS_TEMPLATE = "## 🛂 Coaches\n{}"
 
-HONORABLE_MENTIONS_MESSAGE_TEMPLATE = """
+HONORABLE_MENTIONS_RESULTS_TEMPLATE = """
 ## ⚠ **Honorable Mentions**
 These were people who were non-participants but made it to top 500 and were in our FC!
 {}
 """.strip()
 
-WINNER_MESSAGE_TEMPLATE = """
+WINNER_RESULTS_TEMPLATE = """
 ## Competition Winner
 The winner for this week is: {mention_winner}!
 
@@ -51,11 +55,9 @@ CONTRACTS_MESSAGE_TEMPLATE = """
 {}
 """.strip()
 
-CREDITS_MESSAGE_TEMPLATE = (
-    "\n-# Special thanks to {} for maintaining our Discord bot, {}!"
-)
+CREDITS_TEMPLATE = "\n-# Special thanks to {} for maintaining our Discord bot, {}!"
 
-DRAWING_MESSAGE_TEMPLATE = (
+DRAWING_RESULTS_TEMPLATE = (
     "## Random Drawing\n"
     "Winner of the Random Prize - Gil Drawing was awarded to {}! An extra 350,000 Gil was "
     "sent to them! Remember: This prize is awarded to folks who didn't win the Mog "
@@ -274,6 +276,34 @@ async def end_contract(interaction: discord.Interaction):
     await follow_up_to_user(interaction, msg)
 
 
+@tree.command(
+    name="get_participation_status",
+    description="View your current participation status.",
+    guild=guild,
+)
+@app_commands.checks.has_role("Professional")
+async def get_participation_status(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True, thinking=True)
+
+    participant, contract = await invoke_with_exception_handling(
+        interaction, professionals.get_participation_status, interaction.user.id
+    )
+
+    if participant is None:
+        msg = "You are not currently participating in the competition."
+    else:
+        msg = PARTICIPANT_STATUS_TEMPLATE.format(
+            coach_or_player="coach" if participant.is_coach else "player",
+            first_name=participant.first_name,
+            last_name=participant.last_name,
+        )
+
+    if contract is not None:
+        msg += " " + CONTRACT_STATUS_TEMPLATE.format(amount=contract.amount)
+
+    await interaction.followup.send(msg)
+
+
 async def consume_results(interaction: discord.Interaction) -> CompetitionResults:
     async for result in professionals.get_competition_results(contract_payouts):
         if isinstance(result, str):
@@ -297,7 +327,7 @@ def format_participants_msg(players: list[Participant]) -> str:
         participant_msg = italicize("No participants this week.")
     else:
         participant_msg = format_participant_list(players)
-    return PARTICIPANT_MESSAGE_TEMPLATE.format(participant_msg)
+    return PARTICIPANT_RESULTS_TEMPLATE.format(participant_msg)
 
 
 def format_coach_msg(coaches: list[Participant]) -> str:
@@ -305,13 +335,13 @@ def format_coach_msg(coaches: list[Participant]) -> str:
         coach_msg = italicize("No coaches this week.")
     else:
         coach_msg = format_participant_list(coaches)
-    return COACHES_MESSAGE_TEMPLATE.format(coach_msg)
+    return COACHES_RESULTS_TEMPLATE.format(coach_msg)
 
 
 def format_honorable_mentions_msg(mentions: list[HonorableMention]) -> str:
     if len(mentions) == 0:
         return italicize("No honorable mentions this week.")
-    return HONORABLE_MENTIONS_MESSAGE_TEMPLATE.format(format_participant_list(mentions))
+    return HONORABLE_MENTIONS_RESULTS_TEMPLATE.format(format_participant_list(mentions))
 
 
 def format_contracts(contracts: list[Contract]) -> str:
@@ -347,19 +377,19 @@ def format_results_message(
     if results.competition_win_reason == WinReason.NO_ELIGIBLE_PLAYERS:
         winner_msg = None
     else:
-        winner_msg = WINNER_MESSAGE_TEMPLATE.format(
+        winner_msg = WINNER_RESULTS_TEMPLATE.format(
             mention_winner=mention(results.competition_winner.discord_id),
         )
 
     contracts_msg = format_contracts(results.contract_results)
-    credits_msg = CREDITS_MESSAGE_TEMPLATE.format(
+    credits_msg = CREDITS_TEMPLATE.format(
         mention(interaction.user.id), mention(client.user.id)
     )
 
     if results.drawing_win_reason == WinReason.NO_ELIGIBLE_PLAYERS:
         drawing_msg = None
     else:
-        drawing_msg = DRAWING_MESSAGE_TEMPLATE.format(
+        drawing_msg = DRAWING_RESULTS_TEMPLATE.format(
             results.drawing_winner.first_name + " " + results.drawing_winner.last_name,
         )
 

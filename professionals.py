@@ -1,5 +1,5 @@
 import random
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Tuple
 
 from config import load_config
 from db import SqlLiteClient
@@ -150,6 +150,16 @@ async def end_contract(discord_id: int):
     if len(errors := validate_discord_id(discord_id)) > 0:
         raise ValidationException(errors)
     _db.delete_contract(discord_id)
+
+
+async def get_participation_status(
+    discord_id: int,
+) -> Tuple[Participant | None, Contract | None]:
+    if len(errors := validate_discord_id(discord_id)) > 0:
+        raise ValidationException(errors)
+    participant = _db.get_participant(discord_id)
+    contract = _db.get_contract(discord_id)
+    return participant, contract
 
 
 def score_players_and_honorable_mentions(
