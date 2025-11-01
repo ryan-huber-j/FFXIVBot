@@ -1,14 +1,10 @@
 import os
-import string
 import textwrap
-from typing import Iterable, NamedTuple
 
-from bs4 import BeautifulSoup
 import discord
 from discord import app_commands
-from dotenv import load_dotenv
-import requests
 
+from config import load_config
 from db import SqlLiteClient
 from domain import (
     CompetitionResults,
@@ -30,7 +26,7 @@ WINNER_MESSAGE = " WINNER"
 PARTICIPANT_MESSAGE_TEMPLATE = """
 ## ✅ Participants
 {}
--# Note: ranks Labeled "???" were less than the server-wide top 500 or unlisted at all.
+-# Note: ranks Labeled "???" were either less than our server-wide top 500 or not listed.
 """.strip()
 COACHES_MESSAGE_TEMPLATE = "## 🛂 Coaches\n{}"
 
@@ -77,22 +73,21 @@ contract_payouts = {
 }
 
 
-load_dotenv()
-
+config = load_config()
 intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True
-client = discord.Client(application_id=os.getenv("APPLICATION_ID"), intents=intents)
+client = discord.Client(application_id=config.discord_application_id, intents=intents)
 tree = app_commands.CommandTree(client)
-guild: discord.Guild = discord.Object(id=int(os.getenv("GUILD_ID")))
+guild: discord.Guild = discord.Object(id=config.discord_guild_id)
 professionals_channel = None
 
 
-def run_bot(discord_token: str):
+def run_bot():
     professionals.initialize(
         SqlLiteClient(), LodestoneScraper("https://na.finalfantasyxiv.com")
     )
-    client.run(discord_token)
+    client.run(config.discord_token, root_logger=config.logger)
 
 
 @client.event
@@ -102,7 +97,7 @@ async def on_ready():
     professionals_channel = discord.utils.get(
         client.get_all_channels(), name="professionals-signups"
     )
-    print(f"The bot has connected to Discord!")
+    config.logger.info("The bot has connected to Discord.")
 
 
 def mention(user_id: int) -> str:

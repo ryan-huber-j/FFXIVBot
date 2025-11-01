@@ -4,6 +4,7 @@ import unittest
 import responses
 
 from domain import GrandCompanyRanking, HonorableMention, WinReason
+import professionals
 from professionals import *
 
 tc = unittest.TestCase()
@@ -388,7 +389,10 @@ class TestGetCompetitionResults(unittest.IsolatedAsyncioTestCase):
 
         responses.add(
             mock_fc_members_response(
-                self.HOSTNAME, 200, FREE_COMPANY_ID, members=fc_members
+                self.HOSTNAME,
+                200,
+                professionals._config.free_company_id,
+                members=fc_members,
             )
         )
 

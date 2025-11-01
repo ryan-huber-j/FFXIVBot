@@ -1,5 +1,16 @@
 from enum import Enum
+from logging import Logger
 from typing import NamedTuple
+
+
+class Config(NamedTuple):
+    discord_token: str
+    discord_application_id: int
+    discord_guild_id: int
+    lodestone_url: str
+    free_company_id: str
+    world_name: str
+    logger: Logger
 
 
 class ValidationError(NamedTuple):

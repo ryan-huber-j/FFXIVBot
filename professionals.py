@@ -1,15 +1,14 @@
 import random
-from typing import AsyncGenerator, Generator, Sequence
+from typing import AsyncGenerator
 
+from config import load_config
 from db import SqlLiteClient
 from domain import *
 from lodestone import LodestoneScraper
 
-FREE_COMPANY_ID = "9231394073691073564"
-WORLD = "Siren"
-
 _db = None
 _lodestone = None
+_config = load_config()
 
 
 def initialize(db: SqlLiteClient, scraper: LodestoneScraper):
@@ -261,10 +260,10 @@ async def get_competition_results(
     participants = _db.get_all_participants()
 
     yield "Fetching Free Company members..."
-    fc_members = _lodestone.get_free_company_members(FREE_COMPANY_ID)
+    fc_members = _lodestone.get_free_company_members(_config.free_company_id)
 
     yield "Fetching Grand Company rankings..."
-    gc_rankings = _lodestone.get_grand_company_rankings(WORLD)
+    gc_rankings = _lodestone.get_grand_company_rankings(_config.world_name)
 
     players, honorable_mentions = score_players_and_honorable_mentions(
         fc_members, participants, gc_rankings
