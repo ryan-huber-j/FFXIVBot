@@ -1,5 +1,6 @@
 import responses
 
+from domain import FreeCompanyRanking
 from lodestone import GrandCompanyRanking
 
 
@@ -145,3 +146,39 @@ def register_fc_members(hostname, fc_id, members, status=200, page=1, max_pages=
             hostname, status, fc_id, members=members, page=page, max_pages=max_pages
         )
     )
+
+
+def fake_fc_ranking_row(ranking: FreeCompanyRanking):
+    return f"""
+    <tr data-href='/lodestone/freecompany/{ranking.ffxiv_id}/' class='clickable'>
+      <td class="ranking-character__number ranking-character__up">{ranking.rank}</td>
+      <td class='ranking-character__info ranking-character__info-freecompany'>
+        <h4>{ranking.name}</h4>
+      </td>
+      <td class='ranking-character__value'>{ranking.seals_earned}</td>
+    </tr>
+  """
+
+
+def mock_fc_ranking_response(hostname, status_code, data_center, rankings):
+    if rankings is None:
+        body = ""
+    else:
+        ranking_rows = "\n".join(fake_fc_ranking_row(ranking) for ranking in rankings)
+        body = f"""
+          <table class="ranking-character ranking-character__freecompany js--ranking" cellpadding="0" cellspacing="0">
+            <tbody>
+              {ranking_rows}
+              </tr>
+            </tbody>
+          </table>
+        """
+
+    url = f"https://{hostname}/lodestone/ranking/fc/weekly?filter=1&dcGroup={data_center}"
+    return responses.Response(
+        responses.GET, url, body=body, status=status_code, content_type="text/html"
+    )
+
+
+def register_fc_rankings(hostname, data_center, rankings, status=200):
+    responses.add(mock_fc_ranking_response(hostname, status, rankings, data_center))

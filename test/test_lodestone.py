@@ -3,10 +3,12 @@ import unittest
 
 import responses
 
+from domain import FreeCompanyRanking
 from lodestone import *
 
 HOSTNAME = "some.lodestone.url.com"
 FC_ID = "fc_id"
+DATA_CENTER = "Aether"
 WORLD_NAME = "Siren"
 
 
@@ -157,4 +159,29 @@ class TestSearchFreeCompanies(LodestoneScraperTestCase):
             self.assertRaises(
                 LodestoneScraperException,
                 lambda: self.scraper.search_free_companies(WORLD_NAME),
+            )
+
+
+class TestGetTop100FreeCompanyRankings(LodestoneScraperTestCase):
+
+    @responses.activate
+    def test_happy_path(self):
+        rankings = [
+            FreeCompanyRanking("1234", "Free Company 1", 1, 5000000),
+            FreeCompanyRanking("5678", "Free Company 2", 2, 1000000),
+        ]
+        responses.add(mock_fc_ranking_response(HOSTNAME, 200, DATA_CENTER, rankings))
+        self.assertEqual(
+            self.scraper.get_top_100_free_company_rankings(DATA_CENTER), rankings
+        )
+
+    @responses.activate
+    def test_error_states(self):
+        for status_code in [400, 404, 429, 500]:
+            responses.add(
+                mock_fc_ranking_response(HOSTNAME, status_code, DATA_CENTER, None)
+            )
+            self.assertRaises(
+                LodestoneScraperException,
+                lambda: self.scraper.get_top_100_free_company_rankings(DATA_CENTER),
             )

@@ -3,7 +3,7 @@ import re
 from bs4 import BeautifulSoup
 import requests
 
-from domain import FCMember, FreeCompany, GrandCompanyRanking
+from domain import FCMember, FreeCompany, FreeCompanyRanking, GrandCompanyRanking
 
 _page_number_regex = re.compile("Page \d of (\d)")
 _character_link_regex = re.compile("/lodestone/character/(.+)/")
@@ -189,3 +189,48 @@ class LodestoneScraper:
             free_companies.append(FreeCompany(lodestone_id, free_company_name))
 
         return free_companies
+
+    def get_top_100_free_company_rankings(
+        self, data_center: str
+    ) -> list[FreeCompanyRanking]:
+        response = requests.get(
+            f"{self._base_url}/lodestone/ranking/fc/weekly?filter=1&dcGroup={data_center}"
+        )
+
+        if response.status_code == 404:
+            raise LodestoneScraperException(
+                f"Could not find Free Company rankings for data center {data_center}",
+                response.status_code,
+            )
+        elif response.status_code == 429:
+            raise LodestoneScraperException(
+                f"Unable to fetch Free Company rankings due to Lodestone rate limiting"
+            )
+        elif response.status_code >= 400 and response.status_code < 500:
+            raise LodestoneScraperException(
+                f"Could not find Free Company rankings due to an unknown client error",
+                response.status_code,
+            )
+        elif response.status_code >= 500:
+            raise LodestoneScraperException(
+                "The Lodestone appears to be down", response.status_code
+            )
+        elif response.status_code != 200:
+            raise LodestoneScraperException(
+                f"Could not find Free Company rankings due to an unknown issue",
+                response.status_code,
+            )
+
+        page = BeautifulSoup(response.content, "html.parser")
+        ranking_table_row_tags = page.find_all("tr", class_="clickable")
+        rankings = []
+        for ranking_row_tag in ranking_table_row_tags:
+            id = str(ranking_row_tag["data-href"]).split("/")[3]
+            name = str(ranking_row_tag.find("h4").contents[0]).strip()
+            ranking = int(ranking_row_tag.select(".ranking-character__number")[0].text)
+            seals_earned = int(
+                ranking_row_tag.find("td", {"class": "ranking-character__value"}).text
+            )
+            rankings.append(FreeCompanyRanking(id, name, ranking, seals_earned))
+
+        return rankings

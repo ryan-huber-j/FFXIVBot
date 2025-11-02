@@ -46,6 +46,13 @@ class GrandCompanyRanking(NamedTuple):
     seals: int
 
 
+class FreeCompanyRanking(NamedTuple):
+    ffxiv_id: str
+    name: str
+    rank: int
+    seals_earned: int
+
+
 class FreeCompany(NamedTuple):
     id: str
     name: str
