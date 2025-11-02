@@ -83,6 +83,21 @@ def mock_gc_rankings_response(hostname, status, world, rankings, page_num):
     )
 
 
+def register_gc_pages(hostname, world, rankings, status=200, pages=5):
+    responses.add(mock_gc_rankings_response(hostname, status, world, rankings, 1))
+    for p in range(2, pages + 1):
+        responses.add(mock_gc_rankings_response(hostname, status, world, [], p))
+
+
+def register_gc_page(hostname, world, rankings, page_num=1, status=200):
+    responses.add(mock_gc_rankings_response(hostname, status, world, rankings, page_num))
+
+
+def register_empty_gc_pages(hostname, world, start_page=2, pages=5, status=200):
+    for p in range(start_page, pages + 1):
+        responses.add(mock_gc_rankings_response(hostname, status, world, [], p))
+
+
 def mock_free_companies_response(hostname, status_code, world, fcs=[]):
     key = f"https://{hostname}/lodestone/freecompany?worldname={world}"
 
@@ -121,4 +136,12 @@ def mock_free_companies_response(hostname, status_code, world, fcs=[]):
 
     return responses.Response(
         responses.GET, key, body=body, status=status_code, content_type="text/html"
+    )
+
+
+def register_fc_members(hostname, fc_id, members, status=200, page=1, max_pages=1):
+    responses.add(
+        mock_fc_members_response(
+            hostname, status, fc_id, members=members, page=page, max_pages=max_pages
+        )
     )

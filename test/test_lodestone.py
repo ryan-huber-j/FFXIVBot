@@ -86,26 +86,16 @@ class TestGetGrandCompanyRankings(unittest.TestCase):
     @responses.activate
     def test_single_grand_company(self):
         rankings = [GrandCompanyRanking("id", "Kiryuin Satsuki", 1, 22000000)]
-        responses.add(mock_gc_rankings_response(HOSTNAME, 200, WORLD_NAME, rankings, 1))
-        responses.add(mock_gc_rankings_response(HOSTNAME, 200, WORLD_NAME, [], 2))
-        responses.add(mock_gc_rankings_response(HOSTNAME, 200, WORLD_NAME, [], 3))
-        responses.add(mock_gc_rankings_response(HOSTNAME, 200, WORLD_NAME, [], 4))
-        responses.add(mock_gc_rankings_response(HOSTNAME, 200, WORLD_NAME, [], 5))
+        register_gc_pages(HOSTNAME, WORLD_NAME, rankings)
         self.assertEqual(self.scraper.get_grand_company_rankings(WORLD_NAME), rankings)
 
     @responses.activate
     def test_two_pages(self):
         page1_rankings = [GrandCompanyRanking("id", "Kiryuin Satsuki", 1, 22000000)]
         page2_rankings = [GrandCompanyRanking("id2", "Vespertine Celeano", 2, 10000000)]
-        responses.add(
-            mock_gc_rankings_response(HOSTNAME, 200, WORLD_NAME, page1_rankings, 1)
-        )
-        responses.add(
-            mock_gc_rankings_response(HOSTNAME, 200, WORLD_NAME, page2_rankings, 2)
-        )
-        responses.add(mock_gc_rankings_response(HOSTNAME, 200, WORLD_NAME, [], 3))
-        responses.add(mock_gc_rankings_response(HOSTNAME, 200, WORLD_NAME, [], 4))
-        responses.add(mock_gc_rankings_response(HOSTNAME, 200, WORLD_NAME, [], 5))
+        register_gc_page(HOSTNAME, WORLD_NAME, page1_rankings, page_num=1)
+        register_gc_page(HOSTNAME, WORLD_NAME, page2_rankings, page_num=2)
+        register_empty_gc_pages(HOSTNAME, WORLD_NAME, start_page=3, pages=5)
         self.assertEqual(
             self.scraper.get_grand_company_rankings(WORLD_NAME),
             page1_rankings + page2_rankings,
@@ -122,17 +112,10 @@ class TestGetGrandCompanyRankings(unittest.TestCase):
             GrandCompanyRanking("id4", "GC Ranking 4", 4, 50000),
         ]
         page3_rankings = [GrandCompanyRanking("id", "GC Ranking 5", 5, 1000)]
-        responses.add(
-            mock_gc_rankings_response(HOSTNAME, 200, WORLD_NAME, page1_rankings, 1)
-        )
-        responses.add(
-            mock_gc_rankings_response(HOSTNAME, 200, WORLD_NAME, page2_rankings, 2)
-        )
-        responses.add(
-            mock_gc_rankings_response(HOSTNAME, 200, WORLD_NAME, page3_rankings, 3)
-        )
-        responses.add(mock_gc_rankings_response(HOSTNAME, 200, WORLD_NAME, [], 4))
-        responses.add(mock_gc_rankings_response(HOSTNAME, 200, WORLD_NAME, [], 5))
+        register_gc_page(HOSTNAME, WORLD_NAME, page1_rankings, page_num=1)
+        register_gc_page(HOSTNAME, WORLD_NAME, page2_rankings, page_num=2)
+        register_gc_page(HOSTNAME, WORLD_NAME, page3_rankings, page_num=3)
+        register_empty_gc_pages(HOSTNAME, WORLD_NAME, start_page=4, pages=5)
         self.assertEqual(
             self.scraper.get_grand_company_rankings(WORLD_NAME),
             page1_rankings + page2_rankings + page3_rankings,

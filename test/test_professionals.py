@@ -1,4 +1,9 @@
-from test.request_mocking import mock_fc_members_response, mock_gc_rankings_response
+from test.request_mocking import (
+    mock_fc_members_response,
+    mock_gc_rankings_response,
+    register_fc_members,
+    register_gc_pages,
+)
 import unittest
 
 import responses
@@ -359,16 +364,7 @@ class TestGetCompetitionResults(unittest.IsolatedAsyncioTestCase):
         initialize(self.db, self.lodestone)
 
     def setup_gc_rankings(self, rankings=[]):
-        gc_responses = [
-            mock_gc_rankings_response(self.HOSTNAME, 200, "Siren", rankings, 1),
-            mock_gc_rankings_response(self.HOSTNAME, 200, "Siren", [], 2),
-            mock_gc_rankings_response(self.HOSTNAME, 200, "Siren", [], 3),
-            mock_gc_rankings_response(self.HOSTNAME, 200, "Siren", [], 4),
-            mock_gc_rankings_response(self.HOSTNAME, 200, "Siren", [], 5),
-        ]
-
-        for gc_response in gc_responses:
-            responses.add(gc_response)
+        register_gc_pages(self.HOSTNAME, "Siren", rankings)
 
     def setup_players(
         self, ffxiv_ids_to_players, ffxiv_ids_to_honorable_mentions={}, contracts=[]
@@ -399,13 +395,8 @@ class TestGetCompetitionResults(unittest.IsolatedAsyncioTestCase):
             for id, hm in ffxiv_ids_to_honorable_mentions.items()
         ]
 
-        responses.add(
-            mock_fc_members_response(
-                self.HOSTNAME,
-                200,
-                professionals._config.free_company_id,
-                members=fc_members,
-            )
+        register_fc_members(
+            self.HOSTNAME, professionals._config.free_company_id, fc_members
         )
 
         gc_rankings = [
@@ -426,16 +417,7 @@ class TestGetCompetitionResults(unittest.IsolatedAsyncioTestCase):
             for id, hm in ffxiv_ids_to_honorable_mentions.items()
         ]
 
-        gc_responses = [
-            mock_gc_rankings_response(self.HOSTNAME, 200, "Siren", gc_rankings, 1),
-            mock_gc_rankings_response(self.HOSTNAME, 200, "Siren", [], 2),
-            mock_gc_rankings_response(self.HOSTNAME, 200, "Siren", [], 3),
-            mock_gc_rankings_response(self.HOSTNAME, 200, "Siren", [], 4),
-            mock_gc_rankings_response(self.HOSTNAME, 200, "Siren", [], 5),
-        ]
-
-        for gc_response in gc_responses:
-            responses.add(gc_response)
+        register_gc_pages(self.HOSTNAME, "Siren", gc_rankings)
 
         for contract in contracts:
             self.db.upsert_contract(contract)
@@ -547,19 +529,16 @@ class TestGetCompetitionResults(unittest.IsolatedAsyncioTestCase):
         self.db.upsert_contract(contract)
         self.setup_gc_rankings()
 
-        responses.add(
-            mock_fc_members_response(
-                self.HOSTNAME,
-                200,
-                professionals._config.free_company_id,
-                members=[
-                    FCMember(
-                        ffxiv_id="some_id",
-                        name=f"{participant.first_name} {participant.last_name}",
-                        rank="Member",
-                    )
-                ],
-            )
+        register_fc_members(
+            self.HOSTNAME,
+            professionals._config.free_company_id,
+            [
+                FCMember(
+                    ffxiv_id="some_id",
+                    name=f"{participant.first_name} {participant.last_name}",
+                    rank="Member",
+                )
+            ],
         )
 
         results = await self.wait_for_results()
@@ -576,19 +555,16 @@ class TestGetCompetitionResults(unittest.IsolatedAsyncioTestCase):
     async def test_honorable_mentions_must_have_rank_to_qualify(self):
         self.setup_gc_rankings()
 
-        responses.add(
-            mock_fc_members_response(
-                self.HOSTNAME,
-                200,
-                professionals._config.free_company_id,
-                members=[
-                    FCMember(
-                        ffxiv_id="some_id",
-                        name=f"{default_first_name} {default_last_name}",
-                        rank="Member",
-                    )
-                ],
-            )
+        register_fc_members(
+            self.HOSTNAME,
+            professionals._config.free_company_id,
+            [
+                FCMember(
+                    ffxiv_id="some_id",
+                    name=f"{default_first_name} {default_last_name}",
+                    rank="Member",
+                )
+            ],
         )
 
         results = await self.wait_for_results()
@@ -692,13 +668,8 @@ class TestGetCompetitionResults(unittest.IsolatedAsyncioTestCase):
             ),
         ]
 
-        responses.add(
-            mock_fc_members_response(
-                self.HOSTNAME,
-                200,
-                professionals._config.free_company_id,
-                members=fc_members,
-            )
+        register_fc_members(
+            self.HOSTNAME, professionals._config.free_company_id, fc_members
         )
 
         gc_rankings = [
@@ -722,13 +693,7 @@ class TestGetCompetitionResults(unittest.IsolatedAsyncioTestCase):
             ),
         ]
 
-        responses.add(
-            mock_gc_rankings_response(self.HOSTNAME, 200, "Siren", gc_rankings, 1)
-        )
-        responses.add(mock_gc_rankings_response(self.HOSTNAME, 200, "Siren", [], 2))
-        responses.add(mock_gc_rankings_response(self.HOSTNAME, 200, "Siren", [], 3))
-        responses.add(mock_gc_rankings_response(self.HOSTNAME, 200, "Siren", [], 4))
-        responses.add(mock_gc_rankings_response(self.HOSTNAME, 200, "Siren", [], 5))
+        register_gc_pages(self.HOSTNAME, "Siren", gc_rankings)
 
         results = await self.wait_for_results()
 
