@@ -66,6 +66,32 @@ DRAWING_RESULTS_TEMPLATE = (
     "the Honorable Mentions list to see if YOU made the top 500 this week."
 )
 
+START_COMPETITION_TEMPLATE = """
+# 📢 New Weekly Competition Begins Now! 📢
+-# **📋Extensive Rules for Participation and for Contracts are located in the pinned message in this channel!!📋**
+
+Last week we all earned {total_points:,} Free Company Points, together as a team! (This may also include general FC activity such as running dungeons or clearing content with fellow FC members)! 
+## How to Join Professionals
+Go to {mention_crew_assignments_channel} and self-assign yourself the {mention_professionals} role. This will let you:
+- Utilize our {mention_discussion_channel} channel for tips and discussion on how to properly participate.
+- Access our {signups_channel} channel to sign up as a professional participant or coach.
+## How to Participate
+Participation is managed by Discord application commands. Type `/` to see all available commands.
+- `/participate` to sign up as a participant.
+- `/coach` to sign up as a coach (non-participating). This means you will show up on the leaderboards but not be eligible for prizes.
+- `/contract` to sign up with a contract. Coaches may not create contracts.
+- `/end_participation` to end your participation at any time.
+- `/get_participation_status` to check your participation status.
+### Contracts this week are:
+- **300,000** seals for **450,000** {gil_emoji}
+- **420,000** seals for **550,000** {gil_emoji}
+- **500,000** seals for **650,000** {gil_emoji}
+- **800,000** seals for **900,000** {gil_emoji}
+- **1,000,000** seals for **3,200,000** {gil_emoji}
+## Random Drawing
+(Excluding the weekly winner): **ALL participants** who reach top 500 for local server (Siren) Rankings will have a chance to win  350,000 {gil_emoji} in a random drawing! Be sure to react or you cannot be counted for this weekly drawing!!
+"""
+
 contract_payouts = {
     300000: 450000,
     420000: 550000,
@@ -82,23 +108,25 @@ intents.message_content = True
 client = discord.Client(application_id=config.discord_application_id, intents=intents)
 tree = app_commands.CommandTree(client)
 guild: discord.Guild = discord.Object(id=config.discord_guild_id)
-professionals_channel = None
+professionals_channel: discord.TextChannel = None
 
 
 def run_bot():
-    professionals.initialize(
-        SqlLiteClient(), LodestoneScraper("https://na.finalfantasyxiv.com")
-    )
+    professionals.initialize(SqlLiteClient(), LodestoneScraper(config.lodestone_url))
     client.run(config.discord_token, root_logger=config.logger)
+
+
+def find_channel(name: str) -> discord.TextChannel | None:
+    return discord.utils.get(client.get_all_channels(), name=name)
 
 
 @client.event
 async def on_ready():
+    global professionals_channel, guild
+    professionals_channel = find_channel("professionals-signups")
+    guild = client.get_guild(config.discord_guild_id)
+
     await tree.sync(guild=guild)
-    global professionals_channel
-    professionals_channel = discord.utils.get(
-        client.get_all_channels(), name="professionals-signups"
-    )
     config.logger.info("The bot has connected to Discord.")
 
 
@@ -411,7 +439,7 @@ def format_results_message(
 
 
 @tree.command(
-    name="post_competition_results",
+    name="admin_post_competition_results",
     description="Retrieves all FC members' weekly GC ranking results",
     guild=guild,
 )
@@ -424,5 +452,26 @@ async def post_competition_results(interaction: discord.Interaction):
     )
 
     msg = format_results_message(interaction, results)
-    config.logger.info("Posting competition results to professionals channel:\n%s", msg)
     await professionals_channel.send(msg)
+
+
+@tree.command(
+    name="admin_start_competition",
+    description="Starts a new competition week.",
+    guild=guild,
+)
+@app_commands.checks.has_role("Professional")
+async def start_competition(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True, thinking=True)
+
+    msg = START_COMPETITION_TEMPLATE.format(
+        total_points=1000000,
+        mention_crew_assignments_channel=find_channel("crew-assignment").mention,
+        mention_professionals=get_professionals_role().mention,
+        mention_discussion_channel=find_channel("professionals-discussion").mention,
+        signups_channel=find_channel("professionals-signups").mention,
+        gil_emoji="gil",
+    )
+
+    await professionals_channel.send(msg)
+    await follow_up_to_user(interaction, "Started a new competition week.")
