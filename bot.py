@@ -317,7 +317,10 @@ async def consume_results(interaction: discord.Interaction) -> CompetitionResult
 def format_participant_list(players: list[PlayerScore | HonorableMention]) -> str:
     lines = []
     for p in players:
-        line = f"Rank {p.rank}: {p.first_name} {p.last_name} - **{p.seals_earned:,}**"
+        if p.rank == -1 or p.seals_earned == 0:
+            line = f"Rank ???: {p.first_name} {p.last_name} - **???**"
+        else:
+            line = f"Rank {p.rank}: {p.first_name} {p.last_name} - **{p.seals_earned:,}**"
         lines.append(line)
     return "\n".join(lines)
 
@@ -421,4 +424,5 @@ async def post_competition_results(interaction: discord.Interaction):
     )
 
     msg = format_results_message(interaction, results)
+    config.logger.info("Posting competition results to professionals channel:\n%s", msg)
     await professionals_channel.send(msg)

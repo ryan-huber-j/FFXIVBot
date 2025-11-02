@@ -205,7 +205,7 @@ def score_players_and_honorable_mentions(
                     is_coach=participant.is_coach,
                 )
             )
-        else:
+        elif best_ranking != -1 and sum_of_seals > 0:
             honorable_mentions.append(
                 HonorableMention(
                     first_name=member.name.split(" ")[0],

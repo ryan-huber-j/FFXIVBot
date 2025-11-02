@@ -573,6 +573,33 @@ class TestGetCompetitionResults(unittest.IsolatedAsyncioTestCase):
         )
 
     @responses.activate
+    async def test_honorable_mentions_must_have_rank_to_qualify(self):
+        self.setup_gc_rankings()
+
+        responses.add(
+            mock_fc_members_response(
+                self.HOSTNAME,
+                200,
+                professionals._config.free_company_id,
+                members=[
+                    FCMember(
+                        ffxiv_id="some_id",
+                        name=f"{default_first_name} {default_last_name}",
+                        rank="Member",
+                    )
+                ],
+            )
+        )
+
+        results = await self.wait_for_results()
+
+        self.assertIsNone(results.competition_winner)
+        self.assertEqual(results.competition_win_reason, WinReason.NO_ELIGIBLE_PLAYERS)
+        self.assertIsNone(results.drawing_winner)
+        self.assertEqual(results.drawing_win_reason, WinReason.NO_ELIGIBLE_PLAYERS)
+        self.assertEqual(results.honorable_mentions, [])
+
+    @responses.activate
     async def test_realistic_scenario_with_players_and_coaches(self):
         player1 = default_player_score()
         player2 = default_player_score(
