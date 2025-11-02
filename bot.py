@@ -89,7 +89,7 @@ Participation is managed by Discord application commands. Type `/` to see all av
 - **800,000** seals for **900,000** {gil_emoji}
 - **1,000,000** seals for **3,200,000** {gil_emoji}
 ## Random Drawing
-(Excluding the weekly winner): **ALL participants** who reach top 500 for local server (Siren) Rankings will have a chance to win  350,000 {gil_emoji} in a random drawing! Be sure to react or you cannot be counted for this weekly drawing!!
+(Excluding the weekly winner): **ALL participants** who reach top 500 for local server (Siren) Rankings will have a chance to win  350,000 {gil_emoji} in a random drawing! Be sure to sign up to be eligible!
 """
 
 contract_payouts = {
