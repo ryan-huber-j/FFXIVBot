@@ -170,11 +170,18 @@ def score_players_and_honorable_mentions(
     player_scores = []
     honorable_mentions = []
 
-    id_to_ranking = {gcr.character_id: gcr for gcr in gc_rankings}
+    id_to_rankings: dict[str, list[GrandCompanyRanking]] = {}
+    for gcr in gc_rankings:
+        id_to_rankings.setdefault(gcr.character_id, []).append(gcr)
+
     for member in fc_members:
-        ranking = id_to_ranking.get(member.ffxiv_id)
-        if ranking is None:
+        rankings = id_to_rankings.get(member.ffxiv_id)
+        if not rankings:
             continue
+
+        ranking = rankings[0]
+        sum_of_seals = sum(r.seals for r in rankings)
+        best_ranking = min(r.rank for r in rankings)
 
         first_name, last_name = member.name.split(" ")
 
@@ -192,8 +199,8 @@ def score_players_and_honorable_mentions(
                     discord_id=participant.discord_id,
                     first_name=participant.first_name,
                     last_name=participant.last_name,
-                    rank=ranking.rank,
-                    seals_earned=ranking.seals,
+                    rank=best_ranking,
+                    seals_earned=sum_of_seals,
                     is_coach=participant.is_coach,
                 )
             )
@@ -202,8 +209,8 @@ def score_players_and_honorable_mentions(
                 HonorableMention(
                     first_name=member.name.split(" ")[0],
                     last_name=" ".join(member.name.split(" ")[1:]),
-                    rank=ranking.rank,
-                    seals_earned=ranking.seals,
+                    rank=best_ranking,
+                    seals_earned=sum_of_seals,
                 )
             )
 

@@ -574,3 +574,104 @@ class TestGetCompetitionResults(unittest.IsolatedAsyncioTestCase):
                 ),
             ],
         )
+
+    @responses.activate
+    async def test_should_combine_multiple_rankings_for_single_participant(self):
+        playerA = default_player_score(
+            discord_id=111111111111111111,
+            first_name="Alice",
+            last_name="Example",
+            seals_earned=25,
+        )
+        playerB = default_player_score(
+            discord_id=222222222222222222,
+            first_name="Bob",
+            last_name="Player",
+            seals_earned=30,
+        )
+
+        self.db.upsert_participant(
+            Participant(
+                discord_id=playerA.discord_id,
+                first_name=playerA.first_name,
+                last_name=playerA.last_name,
+                is_coach=False,
+            )
+        )
+        self.db.upsert_participant(
+            Participant(
+                discord_id=playerB.discord_id,
+                first_name=playerB.first_name,
+                last_name=playerB.last_name,
+                is_coach=False,
+            )
+        )
+
+        fc_members = [
+            FCMember(
+                ffxiv_id="charA1",
+                name=f"{playerA.first_name} {playerA.last_name}",
+                rank="Member",
+            ),
+            FCMember(
+                ffxiv_id="charB1",
+                name=f"{playerB.first_name} {playerB.last_name}",
+                rank="Member",
+            ),
+        ]
+
+        responses.add(
+            mock_fc_members_response(
+                self.HOSTNAME,
+                200,
+                professionals._config.free_company_id,
+                members=fc_members,
+            )
+        )
+
+        gc_rankings = [
+            GrandCompanyRanking(
+                character_id="charA1",
+                character_name=f"{playerA.first_name} {playerA.last_name}",
+                rank=1,
+                seals=25,
+            ),
+            GrandCompanyRanking(
+                character_id="charA1",
+                character_name=f"{playerA.first_name} {playerA.last_name}",
+                rank=2,
+                seals=25,
+            ),
+            GrandCompanyRanking(
+                character_id="charB1",
+                character_name=f"{playerB.first_name} {playerB.last_name}",
+                rank=1,
+                seals=30,
+            ),
+        ]
+
+        responses.add(
+            mock_gc_rankings_response(self.HOSTNAME, 200, "Siren", gc_rankings, 1)
+        )
+        responses.add(mock_gc_rankings_response(self.HOSTNAME, 200, "Siren", [], 2))
+        responses.add(mock_gc_rankings_response(self.HOSTNAME, 200, "Siren", [], 3))
+        responses.add(mock_gc_rankings_response(self.HOSTNAME, 200, "Siren", [], 4))
+        responses.add(mock_gc_rankings_response(self.HOSTNAME, 200, "Siren", [], 5))
+
+        results = await self.wait_for_results()
+
+        playerA_entries = [
+            p for p in results.player_scores if p.discord_id == playerA.discord_id
+        ]
+        self.assertEqual(len(playerA_entries), 1)
+        combined = playerA_entries[0]
+        self.assertEqual(combined.seals_earned, 50)
+
+        self.assertIsNotNone(results.competition_winner)
+        self.assertEqual(results.competition_winner.discord_id, playerA.discord_id)
+        self.assertEqual(results.competition_win_reason, WinReason.HIGHEST_SEALS)
+
+        playerB_entry = next(
+            p for p in results.player_scores if p.discord_id == playerB.discord_id
+        )
+        self.assertEqual(playerB_entry.seals_earned, 30)
