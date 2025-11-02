@@ -261,8 +261,8 @@ async def end_participation(interaction: discord.Interaction):
 async def create_contract(
     interaction: discord.Interaction,
     amount: int,
-    character_first_name: str = "",
-    character_last_name: str = "",
+    character_first_name: str,
+    character_last_name: str,
 ) -> None:
     await interaction.response.defer(ephemeral=True, thinking=True)
 
@@ -284,23 +284,6 @@ async def create_contract(
         if character_first_name and character_last_name
         else f"Contract created to earn {amount} seals per week."
     )
-    await follow_up_to_user(interaction, msg)
-
-
-@tree.command(
-    name="end_contract",
-    description="End your current contract.",
-    guild=guild,
-)
-@app_commands.checks.has_role("Professional")
-async def end_contract(interaction: discord.Interaction):
-    await interaction.response.defer(ephemeral=True, thinking=True)
-
-    await invoke_with_exception_handling(
-        interaction, professionals.end_contract, interaction.user.id
-    )
-
-    msg = f"Ended contract for {interaction.user.display_name}."
     await follow_up_to_user(interaction, msg)
 
 

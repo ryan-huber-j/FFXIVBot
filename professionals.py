@@ -1,4 +1,5 @@
 import random
+import sqlite3
 from typing import AsyncGenerator, Tuple
 
 from config import load_config
@@ -53,7 +54,13 @@ async def participate_as_player(discord_id: int, first_name: str, last_name: str
     )
     if len(errors := validate_participant(participant)) > 0:
         raise ValidationException(errors)
-    _db.upsert_participant(participant)
+    try:
+        _db.insert_participant(participant)
+    except sqlite3.IntegrityError as e:
+        raise UserException(
+            log_message=f"Failed to insert participant {participant.discord_id}: {e}",
+            user_message="You are already a participant or coach.",
+        )
 
 
 async def participate_as_coach(discord_id: int, first_name: str, last_name: str):
@@ -65,7 +72,14 @@ async def participate_as_coach(discord_id: int, first_name: str, last_name: str)
     )
     if len(errors := validate_participant(participant)) > 0:
         raise ValidationException(errors)
-    _db.upsert_participant(participant)
+    try:
+        _db.insert_participant(participant)
+    except sqlite3.IntegrityError as e:
+        raise UserException(
+            log_message=f"Failed to insert participant {participant.discord_id}: {e}",
+            user_message="You are already a participant or coach.",
+        )
+
     _db.delete_contract(discord_id)
 
 
@@ -73,7 +87,6 @@ async def end_participation(discord_id: int):
     if len(errors := validate_discord_id(discord_id)) > 0:
         raise ValidationException(errors)
     _db.delete_participant(discord_id)
-    _db.delete_contract(discord_id)
 
 
 def validate_contract_input(contract: ContractInput) -> list[ValidationError]:
@@ -141,9 +154,22 @@ async def create_contract(input: ContractInput):
             is_coach=False,
         )
 
-    _db.upsert_participant(participant)
+    try:
+        _db.insert_participant(participant)
+    except sqlite3.IntegrityError as e:
+        raise UserException(
+            log_message=f"Failed to insert participant {participant.discord_id}: {e}",
+            user_message="You may not create a contract after participating.",
+        )
+
     contract = Contract(discord_id=input.discord_id, amount=input.amount)
-    _db.upsert_contract(contract)
+    try:
+        _db.insert_contract(contract)
+    except sqlite3.IntegrityError as e:
+        raise UserException(
+            log_message=f"Failed to insert contract for {contract.discord_id}: {e}",
+            user_message="You already have a contract.",
+        )
 
 
 async def end_contract(discord_id: int):

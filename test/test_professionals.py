@@ -197,21 +197,6 @@ class TestParticipation(unittest.IsolatedAsyncioTestCase):
         stored_participant = self.db.get_participant(coach.discord_id)
         self.assertEqual(stored_participant, coach)
 
-    async def test_should_delete_contract_when_participant_becomes_coach(self):
-        participant = default_participant()
-        input = default_contract_input()
-        await participate_as_player(
-            participant.discord_id, participant.first_name, participant.last_name
-        )
-        await create_contract(input)
-        await participate_as_coach(
-            participant.discord_id, participant.first_name, participant.last_name
-        )
-        stored_participant = self.db.get_participant(participant.discord_id)
-        stored_contract = self.db.get_contract(input.discord_id)
-        self.assertEqual(stored_participant.is_coach, True)
-        self.assertIsNone(stored_contract)
-
     async def test_invalid_participant(self):
         with self.assertRaises(ValidationException) as ve:
             await participate_as_player("not an int", "Juhdu 123", "Kh igs09j3kE$$##baa")
@@ -233,19 +218,6 @@ class TestParticipation(unittest.IsolatedAsyncioTestCase):
         stored_participant = self.db.get_participant(participant.discord_id)
         self.assertIsNone(stored_participant)
 
-    async def test_should_end_participation_with_contract(self):
-        participant = default_participant()
-        input = default_contract_input()
-        await participate_as_player(
-            participant.discord_id, participant.first_name, participant.last_name
-        )
-        await create_contract(input)
-        await end_participation(participant.discord_id)
-        stored_participant = self.db.get_participant(participant.discord_id)
-        stored_contract = self.db.get_contract(input.discord_id)
-        self.assertIsNone(stored_participant)
-        self.assertIsNone(stored_contract)
-
 
 class TestCreateContract(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
@@ -263,23 +235,23 @@ class TestCreateContract(unittest.IsolatedAsyncioTestCase):
         await create_contract(default_contract_input())
         updated_amount = 800000
         updated_input = default_contract_input(amount=updated_amount)
-        await create_contract(updated_input)
+        with self.assertRaises(professionals.UserException):
+            await create_contract(updated_input)
+
+        # Stored contract should remain unchanged
         stored_contract = self.db.get_contract(default_discord_id)
-        self.assertEqual(
-            stored_contract,
-            Contract(discord_id=default_discord_id, amount=updated_amount),
-        )
+        self.assertEqual(stored_contract, default_contract())
 
     async def test_graceful_update_of_existing_participant(self):
         await create_contract(default_contract_input())
         updated_first_name = "UpdatedName"
         updated_input = default_contract_input(first_name=updated_first_name)
-        await create_contract(updated_input)
+        with self.assertRaises(professionals.UserException):
+            await create_contract(updated_input)
+
         stored_participant = self.db.get_participant(default_discord_id)
-        self.assertEqual(
-            stored_participant,
-            default_participant(first_name=updated_first_name),
-        )
+        # Participant should remain with the original first name
+        self.assertEqual(stored_participant, default_participant())
 
     async def test_coaches_may_not_create_contracts(self):
         input = default_contract_input()
@@ -370,7 +342,7 @@ class TestGetCompetitionResults(unittest.IsolatedAsyncioTestCase):
         self, ffxiv_ids_to_players, ffxiv_ids_to_honorable_mentions={}, contracts=[]
     ):
         for _, player in ffxiv_ids_to_players.items():
-            self.db.upsert_participant(
+            self.db.insert_participant(
                 Participant(
                     discord_id=player.discord_id,
                     first_name=player.first_name,
@@ -420,7 +392,7 @@ class TestGetCompetitionResults(unittest.IsolatedAsyncioTestCase):
         register_gc_pages(self.HOSTNAME, "Siren", gc_rankings)
 
         for contract in contracts:
-            self.db.upsert_contract(contract)
+            self.db.insert_contract(contract)
 
     async def wait_for_results(self):
         async for result in get_competition_results(contracts):
@@ -524,9 +496,9 @@ class TestGetCompetitionResults(unittest.IsolatedAsyncioTestCase):
     @responses.activate
     async def test_non_ranked_player_scores_0_and_wins_nothing(self):
         participant = default_participant()
-        self.db.upsert_participant(participant)
+        self.db.insert_participant(participant)
         contract = default_contract()
-        self.db.upsert_contract(contract)
+        self.db.insert_contract(contract)
         self.setup_gc_rankings()
 
         register_fc_members(
@@ -638,7 +610,7 @@ class TestGetCompetitionResults(unittest.IsolatedAsyncioTestCase):
             seals_earned=30,
         )
 
-        self.db.upsert_participant(
+        self.db.insert_participant(
             Participant(
                 discord_id=playerA.discord_id,
                 first_name=playerA.first_name,
@@ -646,7 +618,7 @@ class TestGetCompetitionResults(unittest.IsolatedAsyncioTestCase):
                 is_coach=False,
             )
         )
-        self.db.upsert_participant(
+        self.db.insert_participant(
             Participant(
                 discord_id=playerB.discord_id,
                 first_name=playerB.first_name,

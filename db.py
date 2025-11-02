@@ -27,15 +27,11 @@ class SqlLiteClient:
         self.cursor.executescript(SCHEMA)
         self.connection.commit()
 
-    def upsert_participant(self, participant: Participant) -> None:
+    def insert_participant(self, participant: Participant) -> None:
         self.cursor.execute(
             """
             INSERT INTO participants (discord_id, first_name, last_name, is_coach)
             VALUES (?, ?, ?, ?)
-            ON CONFLICT(discord_id) DO UPDATE SET
-                first_name=excluded.first_name,
-                last_name=excluded.last_name,
-                is_coach=excluded.is_coach
             """,
             (
                 participant.discord_id,
@@ -78,13 +74,11 @@ class SqlLiteClient:
         )
         self.connection.commit()
 
-    def upsert_contract(self, contract: Contract) -> None:
+    def insert_contract(self, contract: Contract) -> None:
         self.cursor.execute(
             """
             INSERT INTO contracts (discord_id, amount)
             VALUES (?, ?)
-            ON CONFLICT(discord_id) DO UPDATE SET
-                amount=excluded.amount
             """,
             (
                 contract.discord_id,
