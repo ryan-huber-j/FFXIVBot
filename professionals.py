@@ -176,15 +176,15 @@ def score_players_and_honorable_mentions(
 
     for member in fc_members:
         rankings = id_to_rankings.get(member.ffxiv_id)
-        if not rankings:
-            continue
 
-        ranking = rankings[0]
-        sum_of_seals = sum(r.seals for r in rankings)
-        best_ranking = min(r.rank for r in rankings)
+        if rankings:
+            sum_of_seals = sum(r.seals for r in rankings)
+            best_ranking = min(r.rank for r in rankings)
+        else:
+            sum_of_seals = 0
+            best_ranking = -1
 
         first_name, last_name = member.name.split(" ")
-
         participant = next(
             (
                 p
@@ -193,6 +193,7 @@ def score_players_and_honorable_mentions(
             ),
             None,
         )
+
         if participant is not None:
             player_scores.append(
                 PlayerScore(
@@ -233,12 +234,8 @@ def find_competition_winner(
     return winners[0], WinReason.HIGHEST_SEALS
 
 
-def choose_random_drawing_winner(participants: list[PlayerScore]) -> PlayerScore | None:
-    return (
-        None
-        if len(participants) == 0
-        else participants[random.randint(0, len(participants) - 1)]
-    )
+def choose_random_drawing_winner(players: list[PlayerScore]) -> PlayerScore | None:
+    return None if len(players) == 0 else players[random.randint(0, len(players) - 1)]
 
 
 def evaluate_contracts(
@@ -286,7 +283,7 @@ async def get_competition_results(
         fc_members, participants, gc_rankings
     )
 
-    eligible_players = [p for p in players if not p.is_coach]
+    eligible_players = [p for p in players if not p.is_coach and p.seals_earned > 0]
     competition_winner, competition_win_reason = find_competition_winner(eligible_players)
 
     eligible_for_drawing = [

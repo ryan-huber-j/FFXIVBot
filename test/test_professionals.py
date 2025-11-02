@@ -358,6 +358,18 @@ class TestGetCompetitionResults(unittest.IsolatedAsyncioTestCase):
         self.lodestone = LodestoneScraper(self.BASE_URL)
         initialize(self.db, self.lodestone)
 
+    def setup_gc_rankings(self, rankings=[]):
+        gc_responses = [
+            mock_gc_rankings_response(self.HOSTNAME, 200, "Siren", rankings, 1),
+            mock_gc_rankings_response(self.HOSTNAME, 200, "Siren", [], 2),
+            mock_gc_rankings_response(self.HOSTNAME, 200, "Siren", [], 3),
+            mock_gc_rankings_response(self.HOSTNAME, 200, "Siren", [], 4),
+            mock_gc_rankings_response(self.HOSTNAME, 200, "Siren", [], 5),
+        ]
+
+        for gc_response in gc_responses:
+            responses.add(gc_response)
+
     def setup_players(
         self, ffxiv_ids_to_players, ffxiv_ids_to_honorable_mentions={}, contracts=[]
     ):
@@ -528,7 +540,40 @@ class TestGetCompetitionResults(unittest.IsolatedAsyncioTestCase):
         )
 
     @responses.activate
-    async def test_should_realistic_scenario_with_players_and_coaches(self):
+    async def test_non_ranked_player_scores_0_and_wins_nothing(self):
+        participant = default_participant()
+        self.db.upsert_participant(participant)
+        contract = default_contract()
+        self.db.upsert_contract(contract)
+        self.setup_gc_rankings()
+
+        responses.add(
+            mock_fc_members_response(
+                self.HOSTNAME,
+                200,
+                professionals._config.free_company_id,
+                members=[
+                    FCMember(
+                        ffxiv_id="some_id",
+                        name=f"{participant.first_name} {participant.last_name}",
+                        rank="Member",
+                    )
+                ],
+            )
+        )
+
+        results = await self.wait_for_results()
+        self.assertIsNone(results.competition_winner)
+        self.assertEqual(results.competition_win_reason, WinReason.NO_ELIGIBLE_PLAYERS)
+        self.assertIsNone(results.drawing_winner)
+        self.assertEqual(results.drawing_win_reason, WinReason.NO_ELIGIBLE_PLAYERS)
+        self.assertEqual(
+            results.contract_results,
+            [default_contract_result(is_completed=False, payout=0)],
+        )
+
+    @responses.activate
+    async def test_realistic_scenario_with_players_and_coaches(self):
         player1 = default_player_score()
         player2 = default_player_score(
             discord_id=987654321098765432,

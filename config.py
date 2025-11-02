@@ -39,7 +39,7 @@ def load_config() -> Config:
         discord_guild_id=discord_guild_id,
         lodestone_url=lodestone_url,
         free_company_id=free_company_id,
-        world_name="Siren",
+        world_name=world_name,
         logger=logger,
     )
     return _config
