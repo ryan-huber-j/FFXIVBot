@@ -10,9 +10,12 @@ FC_ID = "fc_id"
 WORLD_NAME = "Siren"
 
 
-class TestGetFreeCompanyMembers(unittest.TestCase):
+class LodestoneScraperTestCase(unittest.TestCase):
     def setUp(self):
         self.scraper = LodestoneScraper("https://" + HOSTNAME)
+
+
+class TestGetFreeCompanyMembers(LodestoneScraperTestCase):
 
     @responses.activate
     def test_no_members(self):
@@ -79,9 +82,7 @@ class TestGetFreeCompanyMembers(unittest.TestCase):
             )
 
 
-class TestGetGrandCompanyRankings(unittest.TestCase):
-    def setUp(self):
-        self.scraper = LodestoneScraper("https://" + HOSTNAME)
+class TestGetGrandCompanyRankings(LodestoneScraperTestCase):
 
     @responses.activate
     def test_single_grand_company(self):
@@ -133,9 +134,7 @@ class TestGetGrandCompanyRankings(unittest.TestCase):
             )
 
 
-class TestSearchFreeCompanies(unittest.TestCase):
-    def setUp(self):
-        self.scraper = LodestoneScraper("https://" + HOSTNAME)
+class TestSearchFreeCompanies(LodestoneScraperTestCase):
 
     @responses.activate
     def test_empty(self):

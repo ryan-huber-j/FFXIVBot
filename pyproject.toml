@@ -11,10 +11,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ['pre-commit']
-test = [
-    'pytest',
-    'responses',
-]
+test = ['responses']
 
 [tool.isort]
 profile = 'black'
