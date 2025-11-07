@@ -524,7 +524,8 @@ async def get_contracts(interaction: discord.Interaction):
     else:
         lines = []
         for c in contracts:
-            line = f"{mention(c.discord_id)} - {c.amount} seals"
+            member: discord.Member = guild.get_member(c.discord_id)
+            line = f"{member.nick} - {c.amount} seals"
             lines.append(line)
         msg = "\n".join(lines)
 
