@@ -80,7 +80,6 @@ Participation is managed by Discord application commands. Type `/` to see all av
 - `/participate` to sign up as a participant.
 - `/coach` to sign up as a coach (non-participating). This means you will show up on the leaderboards but not be eligible for prizes.
 - `/contract` to sign up with a contract. Coaches may not create contracts.
-- `/end_participation` to end your participation at any time.
 - `/get_participation_status` to check your participation status.
 ### Contracts this week are:
 - **300,000** seals for **450,000** {gil_emoji}
