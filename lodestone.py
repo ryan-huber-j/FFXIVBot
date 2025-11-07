@@ -1,6 +1,7 @@
 import re
 
 from bs4 import BeautifulSoup
+from cachetools import TTLCache, cached
 import requests
 
 from domain import FCMember, FreeCompany, FreeCompanyRanking, GrandCompanyRanking
@@ -76,6 +77,7 @@ class LodestoneScraper:
 
         return fc_members
 
+    @cached(cache=TTLCache(maxsize=100, ttl=300))
     def get_free_company_members(self, fc_id: str) -> list[FCMember]:
         response = self._get_fc_members_page(fc_id)
         page = BeautifulSoup(response.content, "html.parser")
@@ -96,6 +98,7 @@ class LodestoneScraper:
 
         return members
 
+    @cached(cache=TTLCache(maxsize=100, ttl=300))
     def get_grand_company_rankings(self, world: str) -> list[GrandCompanyRanking]:
         rankings = []
 
@@ -150,6 +153,7 @@ class LodestoneScraper:
 
         return rankings
 
+    @cached(cache=TTLCache(maxsize=100, ttl=300))
     def search_free_companies(self, world: str) -> list[FreeCompany]:
         response = requests.get(
             f"{self._base_url}/lodestone/freecompany?worldname={world}"
@@ -190,6 +194,7 @@ class LodestoneScraper:
 
         return free_companies
 
+    @cached(cache=TTLCache(maxsize=100, ttl=300))
     def get_top_100_free_company_rankings(
         self, data_center: str
     ) -> list[FreeCompanyRanking]:
