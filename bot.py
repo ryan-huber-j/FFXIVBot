@@ -231,23 +231,6 @@ async def coach(
 
 
 @tree.command(
-    name="end_participation",
-    description="End your participation as a professional.",
-    guild=guild,
-)
-@app_commands.checks.has_role("Professional")
-async def end_participation(interaction: discord.Interaction):
-    await interaction.response.defer(ephemeral=True, thinking=True)
-
-    await invoke_with_exception_handling(
-        interaction, professionals.end_participation, interaction.user.id
-    )
-
-    msg = f"Withdrew {interaction.user.display_name} from professionals."
-    await follow_up_to_user(interaction, msg)
-
-
-@tree.command(
     name="contract",
     description="Submit a contract and earn a payout if you meet your goal!",
     guild=guild,
@@ -460,3 +443,90 @@ async def start_competition(interaction: discord.Interaction):
 
     await professionals_channel.send(msg)
     await follow_up_to_user(interaction, "Started a new competition week.")
+
+
+@tree.command(
+    name="admin_end_participation",
+    description="End a player's participation as a professional.",
+    guild=guild,
+)
+@app_commands.checks.has_role("Professional")
+async def end_participation(
+    interaction: discord.Interaction, mention_user: discord.Member
+):
+    await interaction.response.defer(ephemeral=True, thinking=True)
+
+    await invoke_with_exception_handling(
+        interaction, professionals.end_participation, mention_user.id
+    )
+
+    msg = f"Withdrew {mention_user.display_name} from professionals."
+    await follow_up_to_user(interaction, msg)
+
+
+@tree.command(
+    name="admin_end_contract",
+    description="Ends a player's contract.",
+    guild=guild,
+)
+@app_commands.checks.has_role("Professional")
+async def end_contract(interaction: discord.Interaction, mention_user: discord.Member):
+    await interaction.response.defer(ephemeral=True, thinking=True)
+
+    await invoke_with_exception_handling(
+        interaction, professionals.end_contract, mention_user.id
+    )
+
+    msg = f"Ended contract for {mention_user.display_name}."
+    await follow_up_to_user(interaction, msg)
+
+
+@tree.command(
+    name="admin_get_participants",
+    description="Get a list of all current participants.",
+    guild=guild,
+)
+@app_commands.checks.has_role("Professional")
+async def get_participants(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True, thinking=True)
+
+    participants: list[Participant] = await invoke_with_exception_handling(
+        interaction, professionals.get_all_participants
+    )
+
+    if len(participants) == 0:
+        msg = "No current participants."
+    else:
+        lines = []
+        for p in participants:
+            role = "Coach" if p.is_coach else "Player"
+            line = f"{p.first_name} {p.last_name} - {role}"
+            lines.append(line)
+        msg = "\n".join(lines)
+
+    await follow_up_to_user(interaction, msg)
+
+
+@tree.command(
+    name="admin_get_contracts",
+    description="Get a list of all current contracts.",
+    guild=guild,
+)
+@app_commands.checks.has_role("Professional")
+async def get_contracts(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True, thinking=True)
+
+    contracts: list[Contract] = await invoke_with_exception_handling(
+        interaction, professionals.get_all_contracts
+    )
+
+    if len(contracts) == 0:
+        msg = "No current contracts."
+    else:
+        lines = []
+        for c in contracts:
+            line = f"{mention(c.discord_id)} - {c.amount} seals"
+            lines.append(line)
+        msg = "\n".join(lines)
+
+    await follow_up_to_user(interaction, msg)

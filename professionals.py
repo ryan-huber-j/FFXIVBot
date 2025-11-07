@@ -345,3 +345,11 @@ async def start_new_competition():
     _db.delete_all_contracts()
     _db.delete_all_participants()
     return our_fc_ranking.seals_earned if our_fc_ranking else 0
+
+
+async def get_all_participants() -> list[Participant]:
+    return _db.get_all_participants()
+
+
+async def get_all_contracts() -> list[Contract]:
+    return _db.get_all_contracts()
