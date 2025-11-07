@@ -1,4 +1,6 @@
 from test.request_mocking import (
+    register_fc_member_for,
+    register_fc_member_for_participant,
     register_fc_members,
     register_fc_rankings,
     register_gc_pages,
@@ -8,6 +10,7 @@ import unittest
 import responses
 
 from domain import GrandCompanyRanking, HonorableMention, WinReason
+from lodestone import LodestoneScraper
 import professionals
 from professionals import *
 
@@ -180,21 +183,41 @@ class TestValidateContractInput(unittest.TestCase):
 class TestParticipation(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.db = SqlLiteClient(":memory:")
-        initialize(self.db, None)
+        self.lodestone = LodestoneScraper("https://fake.lodestone.test")
+        initialize(self.db, self.lodestone)
 
+    @responses.activate
     async def test_should_store_valid_participant_as_non_coach(self):
         participant = default_participant()
+        register_fc_member_for_participant("fake.lodestone.test", participant)
         await participate_as_player(
             participant.discord_id, participant.first_name, participant.last_name
         )
         stored_participant = self.db.get_participant(participant.discord_id)
         self.assertEqual(stored_participant, participant)
 
+    @responses.activate
     async def test_should_store_valid_coach(self):
         coach = default_participant(is_coach=True)
+        register_fc_member_for_participant("fake.lodestone.test", coach)
         await participate_as_coach(coach.discord_id, coach.first_name, coach.last_name)
         stored_participant = self.db.get_participant(coach.discord_id)
         self.assertEqual(stored_participant, coach)
+
+    @responses.activate
+    async def test_user_cannot_update_existing_participant(self):
+        register_fc_member_for(
+            "fake.lodestone.test", default_first_name, default_last_name
+        )
+        await create_contract(default_contract_input())
+        updated_first_name = "UpdatedName"
+        updated_input = default_contract_input(first_name=updated_first_name)
+        with self.assertRaises(professionals.UserException):
+            await create_contract(updated_input)
+
+        stored_participant = self.db.get_participant(default_discord_id)
+        # Participant should remain with the original first name
+        self.assertEqual(stored_participant, default_participant())
 
     async def test_invalid_participant(self):
         with self.assertRaises(ValidationException) as ve:
@@ -208,8 +231,26 @@ class TestParticipation(unittest.IsolatedAsyncioTestCase):
         errors = ve.exception.errors
         self.assertEqual(len(errors), 3)
 
+    @responses.activate
+    async def test_non_member_cannot_participate_as_player(self):
+        register_fc_member_for("fake.lodestone.test", "Other", "Player")
+        with self.assertRaises(professionals.UserException):
+            await participate_as_player(
+                default_discord_id, default_first_name, default_last_name
+            )
+
+    @responses.activate
+    async def test_non_member_cannot_participate_as_coach(self):
+        register_fc_member_for("fake.lodestone.test", "Other", "Player")
+        with self.assertRaises(professionals.UserException):
+            await participate_as_coach(
+                default_discord_id, default_first_name, default_last_name
+            )
+
+    @responses.activate
     async def test_should_end_participation(self):
         participant = default_participant()
+        register_fc_member_for_participant("fake.lodestone.test", participant)
         await participate_as_player(
             participant.discord_id, participant.first_name, participant.last_name
         )
@@ -221,39 +262,38 @@ class TestParticipation(unittest.IsolatedAsyncioTestCase):
 class TestCreateContract(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.db = SqlLiteClient(":memory:")
-        initialize(self.db, None)
+        self.lodestone = LodestoneScraper("https://fake.lodestone.test")
+        initialize(self.db, self.lodestone)
 
+    @responses.activate
     async def test_valid_contract_creation(self):
+        register_fc_member_for(
+            "fake.lodestone.test", default_first_name, default_last_name
+        )
         await create_contract(default_contract_input())
         stored_contract = self.db.get_contract(default_discord_id)
         stored_participant = self.db.get_participant(default_discord_id)
         self.assertEqual(stored_contract, default_contract())
         self.assertEqual(stored_participant, default_participant())
 
-    async def test_graceful_update_of_existing_contract(self):
+    @responses.activate
+    async def test_user_cannot_update_existing_contract(self):
+        register_fc_member_for(
+            "fake.lodestone.test", default_first_name, default_last_name
+        )
         await create_contract(default_contract_input())
         updated_amount = 800000
         updated_input = default_contract_input(amount=updated_amount)
         with self.assertRaises(professionals.UserException):
             await create_contract(updated_input)
 
-        # Stored contract should remain unchanged
         stored_contract = self.db.get_contract(default_discord_id)
         self.assertEqual(stored_contract, default_contract())
 
-    async def test_graceful_update_of_existing_participant(self):
-        await create_contract(default_contract_input())
-        updated_first_name = "UpdatedName"
-        updated_input = default_contract_input(first_name=updated_first_name)
-        with self.assertRaises(professionals.UserException):
-            await create_contract(updated_input)
-
-        stored_participant = self.db.get_participant(default_discord_id)
-        # Participant should remain with the original first name
-        self.assertEqual(stored_participant, default_participant())
-
+    @responses.activate
     async def test_coaches_may_not_create_contracts(self):
         input = default_contract_input()
+        register_fc_member_for_participant("fake.lodestone.test", input)
         await participate_as_coach(input.discord_id, input.first_name, input.last_name)
         with self.assertRaises(UserException) as pe:
             await create_contract(input)
@@ -269,8 +309,18 @@ class TestCreateContract(unittest.IsolatedAsyncioTestCase):
         errors = ve.exception.errors
         self.assertEqual(len(errors), 1)
 
+    @responses.activate
+    async def test_non_member_cannot_create_contract(self):
+        register_fc_member_for("fake.lodestone.test", "Other", "Player")
+        with self.assertRaises(professionals.UserException):
+            await create_contract(default_contract_input())
+
+    @responses.activate
     async def test_should_end_contract(self):
         contract = default_contract()
+        register_fc_member_for(
+            "fake.lodestone.test", default_first_name, default_last_name
+        )
         await create_contract(default_contract_input())
         await end_contract(contract.discord_id)
         stored_contract = self.db.get_contract(contract.discord_id)
@@ -500,17 +550,7 @@ class TestGetCompetitionResults(unittest.IsolatedAsyncioTestCase):
         self.db.insert_contract(contract)
         self.setup_gc_rankings()
 
-        register_fc_members(
-            self.HOSTNAME,
-            professionals._config.free_company_id,
-            [
-                FCMember(
-                    ffxiv_id="some_id",
-                    name=f"{participant.first_name} {participant.last_name}",
-                    rank="Member",
-                )
-            ],
-        )
+        register_fc_member_for_participant(self.HOSTNAME, participant)
 
         results = await self.wait_for_results()
         self.assertIsNone(results.competition_winner)
@@ -526,17 +566,7 @@ class TestGetCompetitionResults(unittest.IsolatedAsyncioTestCase):
     async def test_honorable_mentions_must_have_rank_to_qualify(self):
         self.setup_gc_rankings()
 
-        register_fc_members(
-            self.HOSTNAME,
-            professionals._config.free_company_id,
-            [
-                FCMember(
-                    ffxiv_id="some_id",
-                    name=f"{default_first_name} {default_last_name}",
-                    rank="Member",
-                )
-            ],
-        )
+        register_fc_member_for(self.HOSTNAME, default_first_name, default_last_name)
 
         results = await self.wait_for_results()
 

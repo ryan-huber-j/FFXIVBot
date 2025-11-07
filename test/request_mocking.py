@@ -1,7 +1,8 @@
 import responses
 
-from domain import FreeCompanyRanking
+from domain import FCMember, FreeCompanyRanking
 from lodestone import GrandCompanyRanking
+import professionals
 
 
 def fake_member_entry(member):
@@ -182,3 +183,22 @@ def mock_fc_ranking_response(hostname, status_code, data_center, rankings):
 
 def register_fc_rankings(hostname, data_center, rankings, status=200):
     responses.add(mock_fc_ranking_response(hostname, status, data_center, rankings))
+
+
+def register_fc_member_for(hostname, first_name, last_name):
+    register_fc_members(
+        hostname,
+        professionals._config.free_company_id,
+        [
+            FCMember(
+                ffxiv_id="some_id",
+                name=f"{first_name} {last_name}",
+                rank="Member",
+            )
+        ],
+    )
+
+
+def register_fc_member_for_participant(hostname, participant):
+    """Register a single FC member for a Participant/Player-like object."""
+    register_fc_member_for(hostname, participant.first_name, participant.last_name)

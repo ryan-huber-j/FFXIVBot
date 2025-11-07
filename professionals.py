@@ -12,6 +12,24 @@ _lodestone = None
 _config = load_config()
 
 
+def _verify_fc_membership(first_name: str, last_name: str) -> None:
+    try:
+        members = _lodestone.get_free_company_members(_config.free_company_id)
+    except Exception as e:
+        raise UserException(
+            log_message=f"Failed to verify FC membership for {first_name} {last_name}: {e}",
+            user_message="Unable to verify Free Company membership at this time.",
+        )
+
+    full_name = f"{first_name} {last_name}"
+    found = any(m.name == full_name for m in members)
+    if not found:
+        raise UserException(
+            log_message=f"User {full_name} is not a member of the configured Free Company.",
+            user_message="You must be a member of the Free Company to participate.",
+        )
+
+
 def initialize(db: SqlLiteClient, scraper: LodestoneScraper):
     global _db, _lodestone
     _db = db
@@ -54,6 +72,8 @@ async def participate_as_player(discord_id: int, first_name: str, last_name: str
     )
     if len(errors := validate_participant(participant)) > 0:
         raise ValidationException(errors)
+    _verify_fc_membership(first_name, last_name)
+
     try:
         _db.insert_participant(participant)
     except sqlite3.IntegrityError as e:
@@ -72,6 +92,8 @@ async def participate_as_coach(discord_id: int, first_name: str, last_name: str)
     )
     if len(errors := validate_participant(participant)) > 0:
         raise ValidationException(errors)
+    _verify_fc_membership(first_name, last_name)
+
     try:
         _db.insert_participant(participant)
     except sqlite3.IntegrityError as e:
@@ -153,6 +175,8 @@ async def create_contract(input: ContractInput):
             last_name=input.last_name,
             is_coach=False,
         )
+
+    _verify_fc_membership(participant.first_name, participant.last_name)
 
     try:
         _db.insert_participant(participant)
