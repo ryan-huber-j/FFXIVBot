@@ -74,6 +74,14 @@ class SqlLiteClient:
         )
         self.connection.commit()
 
+    def delete_all_participants(self) -> None:
+        self.cursor.execute(
+            """
+            DELETE FROM participants
+            """
+        )
+        self.connection.commit()
+
     def insert_contract(self, contract: Contract) -> None:
         self.cursor.execute(
             """
@@ -116,5 +124,13 @@ class SqlLiteClient:
             WHERE discord_id = ?
             """,
             (discord_id,),
+        )
+        self.connection.commit()
+
+    def delete_all_contracts(self) -> None:
+        self.cursor.execute(
+            """
+            DELETE FROM contracts
+            """
         )
         self.connection.commit()

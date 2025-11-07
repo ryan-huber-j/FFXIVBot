@@ -9,6 +9,7 @@ class Config(NamedTuple):
     discord_guild_id: int
     lodestone_url: str
     free_company_id: str
+    data_center: str
     world_name: str
     logger: Logger
 

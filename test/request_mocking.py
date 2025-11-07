@@ -174,11 +174,11 @@ def mock_fc_ranking_response(hostname, status_code, data_center, rankings):
           </table>
         """
 
-    url = f"https://{hostname}/lodestone/ranking/fc/weekly?filter=1&dcGroup={data_center}"
+    url = f"https://{hostname}/lodestone/ranking/fc/weekly?filter=1&dcgroup={data_center}&dcGroup={data_center}"
     return responses.Response(
         responses.GET, url, body=body, status=status_code, content_type="text/html"
     )
 
 
 def register_fc_rankings(hostname, data_center, rankings, status=200):
-    responses.add(mock_fc_ranking_response(hostname, status, rankings, data_center))
+    responses.add(mock_fc_ranking_response(hostname, status, data_center, rankings))

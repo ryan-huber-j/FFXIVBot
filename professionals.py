@@ -335,3 +335,13 @@ async def get_competition_results(
         contract_results=contract_results,
         honorable_mentions=honorable_mentions,
     )
+
+
+async def start_new_competition():
+    fc_ranks = _lodestone.get_top_100_free_company_rankings(_config.data_center)
+    our_fc_ranking = next(
+        (r for r in fc_ranks if r.ffxiv_id == _config.free_company_id), None
+    )
+    _db.delete_all_contracts()
+    _db.delete_all_participants()
+    return our_fc_ranking.seals_earned if our_fc_ranking else 0

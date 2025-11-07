@@ -194,7 +194,7 @@ class LodestoneScraper:
         self, data_center: str
     ) -> list[FreeCompanyRanking]:
         response = requests.get(
-            f"{self._base_url}/lodestone/ranking/fc/weekly?filter=1&dcGroup={data_center}"
+            f"{self._base_url}/lodestone/ranking/fc/weekly?filter=1&dcgroup={data_center}&dcGroup={data_center}"
         )
 
         if response.status_code == 404:
@@ -222,7 +222,9 @@ class LodestoneScraper:
             )
 
         page = BeautifulSoup(response.content, "html.parser")
-        ranking_table_row_tags = page.find_all("tr", class_="clickable")
+        ranking_table_row_tags = page.find("table", class_="ranking-character").find_all(
+            "tr"
+        )
         rankings = []
         for ranking_row_tag in ranking_table_row_tags:
             id = str(ranking_row_tag["data-href"]).split("/")[3]

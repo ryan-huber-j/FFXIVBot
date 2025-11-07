@@ -170,7 +170,7 @@ class TestGetTop100FreeCompanyRankings(LodestoneScraperTestCase):
             FreeCompanyRanking("1234", "Free Company 1", 1, 5000000),
             FreeCompanyRanking("5678", "Free Company 2", 2, 1000000),
         ]
-        responses.add(mock_fc_ranking_response(HOSTNAME, 200, DATA_CENTER, rankings))
+        register_fc_rankings(HOSTNAME, DATA_CENTER, rankings)
         self.assertEqual(
             self.scraper.get_top_100_free_company_rankings(DATA_CENTER), rankings
         )
@@ -178,9 +178,7 @@ class TestGetTop100FreeCompanyRankings(LodestoneScraperTestCase):
     @responses.activate
     def test_error_states(self):
         for status_code in [400, 404, 429, 500]:
-            responses.add(
-                mock_fc_ranking_response(HOSTNAME, status_code, DATA_CENTER, None)
-            )
+            register_fc_rankings(HOSTNAME, DATA_CENTER, [], status=status_code)
             self.assertRaises(
                 LodestoneScraperException,
                 lambda: self.scraper.get_top_100_free_company_rankings(DATA_CENTER),

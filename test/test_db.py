@@ -68,12 +68,18 @@ class TestParticipants(unittest.TestCase):
         except Exception as e:
             self.fail(f"Deletion of nonexistent participant raised an exception: {e}")
 
-    def test_should_delete_contract(self):
-        contract = Contract(discord_id=123456789, amount=100)
-        self.db_client.insert_contract(contract)
-        self.db_client.delete_contract(123456789)
-        result = self.db_client.get_contract(123456789)
-        self.assertIsNone(result)
+    def test_should_delete_all_participants(self):
+        participant1 = Participant(
+            discord_id=111111111, first_name="Alice", last_name="Wonder", is_coach=False
+        )
+        participant2 = Participant(
+            discord_id=222222222, first_name="Bob", last_name="Builder", is_coach=True
+        )
+        self.db_client.insert_participant(participant1)
+        self.db_client.insert_participant(participant2)
+        self.db_client.delete_all_participants()
+        result = self.db_client.get_all_participants()
+        self.assertEqual(len(result), 0)
 
     def test_should_handle_deletion_of_nonexistent_contract_gracefully(self):
         try:
@@ -113,3 +119,19 @@ class TestContracts(unittest.TestCase):
         self.db_client.insert_contract(contract2)
         result = self.db_client.get_all_contracts()
         self.assertEqual(result, [contract1, contract2])
+
+    def test_should_delete_contract(self):
+        contract = Contract(discord_id=123456789, amount=100)
+        self.db_client.insert_contract(contract)
+        self.db_client.delete_contract(123456789)
+        result = self.db_client.get_contract(123456789)
+        self.assertIsNone(result)
+
+    def test_should_delete_all_contracts(self):
+        contract1 = Contract(discord_id=111111111, amount=150)
+        contract2 = Contract(discord_id=222222222, amount=250)
+        self.db_client.insert_contract(contract1)
+        self.db_client.insert_contract(contract2)
+        self.db_client.delete_all_contracts()
+        result = self.db_client.get_all_contracts()
+        self.assertEqual(len(result), 0)

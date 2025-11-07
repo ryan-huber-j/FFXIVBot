@@ -70,7 +70,7 @@ START_COMPETITION_TEMPLATE = """
 # 📢 New Weekly Competition Begins Now! 📢
 -# **📋Extensive Rules for Participation and for Contracts are located in the pinned message in this channel!!📋**
 
-Last week we all earned {total_points:,} Free Company Points, together as a team! (This may also include general FC activity such as running dungeons or clearing content with fellow FC members)! 
+Last week we all earned **{total_points:,}** Free Company Points, together as a team! (This may also include general FC activity such as running dungeons or clearing content with fellow FC members)! 
 ## How to Join Professionals
 Go to {mention_crew_assignments_channel} and self-assign yourself the {mention_professionals} role. This will let you:
 - Utilize our {mention_discussion_channel} channel for tips and discussion on how to properly participate.
@@ -447,8 +447,10 @@ async def post_competition_results(interaction: discord.Interaction):
 async def start_competition(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True, thinking=True)
 
+    last_week_seals = await professionals.start_new_competition()
+
     msg = START_COMPETITION_TEMPLATE.format(
-        total_points=1000000,
+        total_points=last_week_seals,
         mention_crew_assignments_channel=find_channel("crew-assignment").mention,
         mention_professionals=get_professionals_role().mention,
         mention_discussion_channel=find_channel("professionals-discussion").mention,

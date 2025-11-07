@@ -1,7 +1,6 @@
 from test.request_mocking import (
-    mock_fc_members_response,
-    mock_gc_rankings_response,
     register_fc_members,
+    register_fc_rankings,
     register_gc_pages,
 )
 import unittest
@@ -684,3 +683,39 @@ class TestGetCompetitionResults(unittest.IsolatedAsyncioTestCase):
             p for p in results.player_scores if p.discord_id == playerB.discord_id
         )
         self.assertEqual(playerB_entry.seals_earned, 30)
+
+
+class TestStartCompetition(unittest.IsolatedAsyncioTestCase):
+    HOSTNAME = "fake.lodestone.test"
+    BASE_URL = f"https://{HOSTNAME}"
+
+    def setUp(self):
+        self.db = SqlLiteClient(":memory:")
+        self.lodestone = LodestoneScraper(self.BASE_URL)
+        initialize(self.db, self.lodestone)
+
+    @responses.activate
+    async def test_happy_path(self):
+        register_fc_rankings(
+            "fake.lodestone.test",
+            "Aether",
+            [
+                FreeCompanyRanking(
+                    ffxiv_id="fc1", name="FC One", rank=1, seals_earned=1000
+                ),
+                FreeCompanyRanking(
+                    ffxiv_id=professionals._config.free_company_id,
+                    name="FC Two",
+                    rank=2,
+                    seals_earned=900,
+                ),
+            ],
+        )
+
+        self.db.insert_contract(default_contract())
+        self.db.insert_participant(default_participant())
+
+        last_week_seals = await professionals.start_new_competition()
+        self.assertEqual(last_week_seals, 900)
+        self.assertEqual(self.db.get_all_contracts(), [])
+        self.assertEqual(self.db.get_all_participants(), [])
